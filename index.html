@@ -1,0 +1,292 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<head>
+    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet"
+          type="text/css"/>
+    <link REL=STYLESHEET TYPE="text/css" HREF="/~shattuck/css/dstyle.css">
+    <style>
+        .subjtext {
+            font-size: 12px;
+            font-family: "Gill Sans", "Lucida Grande", Lucida, Verdana, sans-serif;
+            color: #000000;
+        }
+
+        ul#gallery {
+            margin: 0 auto;
+            padding: 0;
+            list-style-type: none;
+            width: 100%;
+        }
+
+        ul#gallery li {
+            float: left;
+            margin: 5px;
+            background-color: gray;
+        }
+
+        body {
+            background-color: #404040;
+            font-family: "Gill Sans", "Lucida Grande", Lucida, Verdana, sans-serif;
+            color: #FFFFFF;
+        }
+
+        p {
+            text-align: left;
+            color: #CCCCCC;
+            font-family: arial;
+        }
+
+        ul#gallery li p {
+            text-align: center;
+            margin: 5px 5px;
+            text-align: left;
+            color: black;
+            font-family: arial;
+        }
+
+        .roundrect {
+            margin: 5px;
+            padding: 5px;
+            border: 2px solid;
+            border-radius: 5px;
+        }
+
+        #progressbar {
+            background-color: black;
+            border-radius: 6px; /* (height of inner div) / 2 + padding */
+            padding: 3px;
+        }
+
+        #progressbar > div {
+            background-color: #B0B0B0;
+            padding: 0px;
+            width: 0%; /* Adjust with JavaScript */
+            height: 6px;
+            border-radius: 3px;
+        }
+    </style>
+    <title>BrainSuite Surface Extraction & Labeling</title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+    <script type="text/javascript">
+        $(function () {
+            $("#slider").slider({
+                slide: function (event, ui) {
+                    setThumbSize(ui.value);
+                },
+                animate: "fast", min: 32, max: 512, value: 128
+            });
+        });
+        var viewportWidth = $(window).width();
+        var viewportHeight = $(window).height();
+        function resizeIt() {
+            viewportWidth = $(window).width();
+            viewportHeight = $(window).height();
+            var imageport = document.getElementById("images");
+            if (imageport)
+                imageport.style.height = (viewPortHeight - 400) + "px";
+        }
+        $(window).resize(function () {
+            viewportWidth = $(window).width();
+            viewportHeight = $(window).height();
+            var imageport = document.getElementById("images");
+            if (imageport)
+                imageport.style.height = (viewPortHeight - 400) + "px";
+        });
+        var selectedSubj = 0;
+        function loadSubjTray(id) {
+            var foot = document.getElementById("footer");
+            var f = $("#footer");
+            var p = f.position();
+            foot.innerHTML = ( "left: " + foot);
+            selectedSubj = id;
+            for (var sid = 0; sid < subjs.length; sid++) {
+                var lid = document.getElementById("li" + sid);
+                if (id == sid) {
+                    lid.style.borderColor = "#000080";
+                }
+                else
+                    lid.style.borderColor = "#000000";
+//				lid.style.border='border:2px solid blue;'
+            }
+//		document.getElementById("li"+id).borderColor='red';
+            var subjID = subjs[id];
+            var prefix = subjID + "/steps/" + subjID;
+            var stop = subjectStates[id];
+            var imgstr = "<p>ID: " + subjID;
+            imgstr += "<br/>status:";
+            if (stop >= 0) {
+                imgstr += " finished " + processnames[stop];// +
+                if (stop + 1 < processnames.length) imgstr += ",";
+            }
+            if (stop + 1 < processnames.length) imgstr += " performing " + processnames[stop + 1];
+            imgstr += "</p>";
+            if (stop < 0) stop = 0;
+            for (var i = 0; i <= stop; i++) {
+                imgstr += "<img src=" + prefix + stepnames[i] + " width=10%>";
+            }
+            document.getElementById("tray").innerHTML = imgstr;
+        }
+        function setStatus(statusString) {
+            document.getElementById("status").innerHTML = statusString;
+        }
+        function setMessage(messageString) {
+            document.getElementById("message").innerHTML = messageString;
+        }
+        function urlExists(testUrl) { // this will return 200 on success, and 0 or negative value on error
+            var http = jQuery.ajax({
+                type: "HEAD",
+                url: testUrl,
+                async: false
+            })
+            return http.status;
+        }
+        function displayImage(image, id) {
+            document.getElementById("img" + id).src = image;
+        }
+        function makeURL(subjectIndex, state) {
+            if (state < 0) state = 0;
+            if (!stepnames[state]) return null;
+            return subjs[subjectIndex] + "/steps/" + subjs[subjectIndex] + stepnames[state];
+        }
+        var stateCount = 0;
+        var pending = false;
+        function setThumbSize(height) {
+            for (var subjectIndex = 0; subjectIndex < subjs.length; subjectIndex++) {
+                var theImg = document.getElementById('img' + subjectIndex);
+                if (theImg) theImg.height = height;
+                var theSpan = document.getElementById('thumbsize');
+                if (theSpan) theSpan.innerHTML = height;
+
+            }
+        }
+        function updateImages(newStates) {
+            loadSubjTray(selectedSubj);
+            for (var subjectIndex = 0; subjectIndex < subjs.length; subjectIndex++) {
+//							if (subjectStates[subjectIndex]<stepnames.length-1)
+                {
+                    var newState = newStates[subjectIndex];
+                    if (newState != subjectStates[subjectIndex]) {
+                        var url = makeURL(subjectIndex, newState);
+                        if (!url) continue;
+                        var check = urlExists(url);
+                        if (check == 200) {
+                            var statePct = 0;
+                            if (newState > 0) {
+                                statePct = newState / (shortnames.length - 1);
+                            }
+                            if (statePct > 1) statePct = 1;
+                            subjectStates[subjectIndex] = newState;
+//										document.getElementById("im"+subjectIndex).href=url;
+                            document.getElementById("p" + subjectIndex).innerHTML = subjs[subjectIndex] + "<br/>" + shortnames[subjectStates[subjectIndex]];
+                            document.getElementById("d" + subjectIndex).style.width = 100 * statePct + "%";
+                            displayImage(makeURL(subjectIndex, subjectStates[subjectIndex]), subjectIndex);
+                        }
+                        else {
+                        }
+                    }
+                }
+            }
+        }
+        function scanJSON() {
+            if (pending) return;
+            $.ajax({
+                cache: false,
+                url: jsonPath,
+                dataType: "json",
+                success: function (json) {
+                    pending = true;
+                    if (json) {
+                        var statusString = "update " + stateCount + ": " + json.status;
+                        statusString += "<br/>started at: " + json.start_time;
+                        statusString += "<br/>last update at: " + json.update_time;
+                        statusString += "<br/>runtime: " + json.runtime;
+                        stateCount++;
+                        if (json.process_states) {
+                            setStatus(statusString);
+                            updateImages(json.process_states);
+                        }
+                        else {
+                            setStatus(statusString + " (no state data available)");
+                        }
+                    }
+                    pending = false;
+                }
+            });
+        }
+
+        function startTimer() {
+            setInterval(scanJSON, 1000);
+            setStatus("initializing images");
+        }
+
+
+        var jsonPath = "brainsuite_state.json";
+        var subjs = new Array(
+                "1003", "1004", "1005", "1011", "1017");
+        var processnames = new Array("initialization", "skull-stripping", "bias-correction", "tissue labeling",
+                "cerebrum masking", "initial cortex masking", "mask scrubbing",
+                "topology correction", "inner cortex mask generation", "inner cortical surface generation");//, "pial cortex", "labeled cortex");
+        var shortnames = new Array("mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask", "initial cortex mask", "scrubbed cortex",
+                "topo-corrected", "inner cortex mask", "inner cortex");//, "pial cortex", "labeled cortex");
+        var stepnames = new Array(".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png", ".cortex.scrubbed.png",
+                ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.jpg");//, ".pial.cortex.jpg", ".mid.cortex.svreg.jpg");
+        var subjectStates = [];
+        for (var i = 0; i < subjs.length; i++) subjectStates[i] = -1;
+    </script>
+</head>
+
+
+<body onload="startTimer()">
+
+
+<div>
+    <div class="roundrect" style="margin-right:px;" ?>
+        <p>showing subjects 1-5 of 5 subjects at size <span id="thumbsize">128</span>
+        <div id="slider" style="height: 15px; width:256px"></div>
+        </p>
+        <p id="status">initializing</p>
+    </div>
+    <div id="tray" class="roundrect" style="margin-right:px"></div>
+    <div id="images" class="roundrect" style="overflow-y:scroll;height:400px;margin-right:px;">
+        <ul id='gallery'>
+            <li id="li0" style='border:2px solid black;'><img id="img0" src="1003/steps/1003.png" height=128px
+                                                              onclick="loadSubjTray(0)">
+                <div class='subjtext' id=p0>1003<br/>initializing</div>
+                <div id="progressbar">
+                    <div id=d0></div>
+                </div>
+            </li>
+            <li id="li1" style='border:2px solid black;'><img id="img1" src="1004/steps/1004.png" height=128px
+                                                              onclick="loadSubjTray(1)">
+                <div class='subjtext' id=p1>1004<br/>initializing</div>
+                <div id="progressbar">
+                    <div id=d1></div>
+                </div>
+            </li>
+            <li id="li2" style='border:2px solid black;'><img id="img2" src="1005/steps/1005.png" height=128px
+                                                              onclick="loadSubjTray(2)">
+                <div class='subjtext' id=p2>1005<br/>initializing</div>
+                <div id="progressbar">
+                    <div id=d2></div>
+                </div>
+            </li>
+            <li id="li3" style='border:2px solid black;'><img id="img3" src="1011/steps/1011.png" height=128px
+                                                              onclick="loadSubjTray(3)">
+                <div class='subjtext' id=p3>1011<br/>initializing</div>
+                <div id="progressbar">
+                    <div id=d3></div>
+                </div>
+            </li>
+            <li id="li4" style='border:2px solid black;'><img id="img4" src="1017/steps/1017.png" height=128px
+                                                              onclick="loadSubjTray(4)">
+                <div class='subjtext' id=p4>1017<br/>initializing</div>
+                <div id="progressbar">
+                    <div id=d4></div>
+                </div>
+            </li>
+    </div> <!-- images frame -->
+</div>
+
+
+<p id="footer">hello</p>
+
