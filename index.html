@@ -50,19 +50,24 @@
             border-radius: 5px;
         }
 
-        #progressbar {
+        .progressbar {
             background-color: black;
             border-radius: 6px; /* (height of inner div) / 2 + padding */
             padding: 3px;
         }
 
-        #progressbar > div {
+        .progressbar > div {
             background-color: #B0B0B0;
             padding: 0px;
             width: 0%; /* Adjust with JavaScript */
             height: 6px;
             border-radius: 3px;
         }
+        #images  {
+            overflow-y:scroll;
+            height:400px;
+        }
+
     </style>
 
     <title>BrainSuite Surface Extraction & Labeling</title>
@@ -74,35 +79,109 @@
 
     <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
     <script type="text/javascript">
+        const JSON_PATH= "brainsuite_state.json";
+        const PROCESS_NAMES= ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
+            "cerebrum masking", "initial cortex masking", "mask scrubbing",
+            "topology correction", "inner cortex mask generation", "inner cortical surface generation"];//, "pial cortex", "labeled cortex"];
+        const SHORT_NAMES = ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask", "initial cortex mask", "scrubbed cortex",
+            "topo-corrected", "inner cortex mask", "inner cortex"];//, "pial cortex", "labeled cortex");
+        const STEP_NAMES = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png", ".cortex.scrubbed.png",
+            ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.jpg"];//, ".pial.cortex.jpg", ".mid.cortex.svreg.jpg");
 
-        var selectedSubj = 0;
+
+        var selectedSubjectIndex = 0;
+        var stateCount = 0;
+        var ajaxLock = false;
+
+        //var subjects = ["1003", "1004", "1005", "1011", "1017"];
+        var pathToThumbnails;
+        var subjects = []; //Init subjects from JSON
+        var subjectStates = []; //Init from JSON. All initially -1
+        var imagePath;
+
+        function initFromJSON(){
+            $.ajax({
+                cache: false,
+                url: JSON_PATH,
+                dataType: "json",
+                success: function (json) {
+                    ajaxLock = true;
+                    if (json) {
+                        //TODO: Checking for null
+                        var statusString = "Initializing data from file: " + JSON_PATH;
+                        if (json.subjects) {
+                            setStatus(statusString);
+                            pathToThumbnails = json.path_to_thumbnails;
+                            //Init arrays
+                            for(var i = 0 ; i < Object(json.subjects).length; i++){
+                                subjects.push(json.subjects[i].name);
+                                subjectStates.push(-1);
+                            }
+
+                            initGallery();
+
+                        }
+                        else {
+                            setStatus(statusString + " (no state data available)");
+                        }
+                    }
+
+                    ajaxLock = false;
+                }
+            });
+
+        }
+
+        function initGallery(){
+            var galleryHTML = "";
+            for(var i = 0 ; i < subjects.length ; i++){
+                galleryHTML +=
+                    `<li id="li${i}" style="border:2px solid black;">
+                        <img id="img${i}" height="128px" onclick="loadSubjTray(${i})" />
+                        <div class="subjtext" id="text${i}">${subjects[i]}<br>Initializing</div>
+                        <div class="progressbar">
+                            <div id="progress${i}"></div>
+                        </div>
+                    </li>
+                    `
+            }
+        $("#gallery").html(galleryHTML);
+        }
+
+
 
         function loadSubjTray(id) {
-            selectedSubj = id;
-            for (var sid = 0; sid < subjs.length; sid++) {
+            selectedSubjectIndex = id;
+
+            //Handle border highlight
+            for (var sid = 0; sid < subjects.length; sid++) {
                 var lid = document.getElementById("li" + sid);
                 if (id == sid) {
                     lid.style.borderColor = "#000080";
                 }
                 else
                     lid.style.borderColor = "#000000";
-//				lid.style.border='border:2px solid blue;'
             }
-//		document.getElementById("li"+id).borderColor='red';
-            var subjID = subjs[id];
-            var prefix = subjID + "/steps/" + subjID;
+
+            var subjID = subjects[id];
+            var prefix = subjID + "/thumbnails/" + subjID;
             var stop = subjectStates[id];
+            alert(stop);
             var imgstr = "<p>ID: " + subjID;
             imgstr += "<br/>status:";
             if (stop >= 0) {
-                imgstr += " finished " + processnames[stop];// +
-                if (stop + 1 < processnames.length) imgstr += ",";
+                imgstr += " finished " + PROCESS_NAMES[stop];// +
+                if (stop + 1 < PROCESS_NAMES.length) {
+                    imgstr += ",";
+                }
             }
-            if (stop + 1 < processnames.length) imgstr += " performing " + processnames[stop + 1];
+            if (stop + 1 < PROCESS_NAMES.length) {
+                imgstr += " performing " + PROCESS_NAMES[stop + 1];
+            }
             imgstr += "</p>";
             if (stop < 0) stop = 0;
             for (var i = 0; i <= stop; i++) {
-                imgstr += "<img src=" + prefix + stepnames[i] + " width=10%>";
+                imgstr += "<img src=" + prefix + STEP_NAMES[i] + " width=10%>";
             }
             $("#tray").html(imgstr);
         }
@@ -130,20 +209,20 @@
         }
 
 
-
-
-
         function makeURL(subjectIndex, state) {
-            if (state < 0) state = 0;
-            if (!stepnames[state]) return null;
-            return subjs[subjectIndex] + "/steps/" + subjs[subjectIndex] + stepnames[state];
+            if (state < 0){
+                state = 0;
+            }
+            if (!STEP_NAMES[state]){
+                return null;
+            }
+            return subjects[subjectIndex] + pathToThumbnails + subjects[subjectIndex] + STEP_NAMES[state];
         }
 
 
-        var stateCount = 0;
-        var pending = false;
+
         function setThumbSize(height) {
-            for (var subjectIndex = 0; subjectIndex < subjs.length; subjectIndex++) {
+            for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 var theImg = document.getElementById('img' + subjectIndex);
                 if (theImg) theImg.height = height;
                 var theSpan = document.getElementById('thumbsize');
@@ -152,28 +231,30 @@
             }
         }
 
-
         function updateImages(newStates) {
-            loadSubjTray(selectedSubj);
-            for (var subjectIndex = 0; subjectIndex < subjs.length; subjectIndex++) {
-//							if (subjectStates[subjectIndex]<stepnames.length-1)
+            loadSubjTray(selectedSubjectIndex);
+            for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 {
-                    var newState = newStates[subjectIndex];
+                    var newState = newStates[subjectIndex].state;
                     if (newState != subjectStates[subjectIndex]) {
                         var url = makeURL(subjectIndex, newState);
-                        if (!url) continue;
+                        if (!url){
+                            continue;
+                        }
                         var check = urlExists(url);
                         if (check == 200) {
                             var statePct = 0;
                             if (newState > 0) {
-                                statePct = newState / (shortnames.length - 1);
+                                statePct = newState / (SHORT_NAMES.length - 1);
                             }
-                            if (statePct > 1) statePct = 1;
+                            if (statePct > 1){
+                                statePct = 1;
+                            }
+                            document.getElementById("progress" + subjectIndex).style.width = 100 * statePct + "%";
+                            document.getElementById("text" + subjectIndex).innerHTML = subjects[subjectIndex] + "<br/>" + SHORT_NAMES[newState];
+                            displayImage(makeURL(subjectIndex, newState), subjectIndex);
+
                             subjectStates[subjectIndex] = newState;
-//										document.getElementById("im"+subjectIndex).href=url;
-                            document.getElementById("p" + subjectIndex).innerHTML = subjs[subjectIndex] + "<br/>" + shortnames[subjectStates[subjectIndex]];
-                            document.getElementById("d" + subjectIndex).style.width = 100 * statePct + "%";
-                            displayImage(makeURL(subjectIndex, subjectStates[subjectIndex]), subjectIndex);
                         }
                         else {
                         }
@@ -184,28 +265,33 @@
 
 
         function scanJSON() {
-            if (pending) return;
+            if (ajaxLock){
+                return;
+            }
+
             $.ajax({
                 cache: false,
-                url: jsonPath,
+                url: JSON_PATH,
                 dataType: "json",
                 success: function (json) {
-                    pending = true;
+                    ajaxLock = true;
+
                     if (json) {
                         var statusString = "update " + stateCount + ": " + json.status;
                         statusString += "<br/>started at: " + json.start_time;
                         statusString += "<br/>last update at: " + json.update_time;
                         statusString += "<br/>runtime: " + json.runtime;
                         stateCount++;
-                        if (json.process_states) {
+                        if (json.subjects) {
                             setStatus(statusString);
-                            updateImages(json.process_states);
+                            updateImages(json.subjects);
                         }
                         else {
                             setStatus(statusString + " (no state data available)");
                         }
                     }
-                    pending = false;
+
+                    ajaxLock = false;
                 }
             });
         }
@@ -216,6 +302,7 @@
         }
 
         $(document).ready(function(){
+
             $(function () {
                 $("#slider").slider({
                     slide: function (event, ui) {
@@ -227,36 +314,21 @@
 
             $(window).resize(function () {
                 var viewportWidth = $(window).width();
-                var viewportHeight = $(window).height();
+                var viewPortHeight = $(window).height();
                 var imageport = document.getElementById("images");
                 if (imageport)
                     imageport.style.height = (viewPortHeight - 400) + "px";
             });
-
-
+            initFromJSON();
+            startTimer();
         });
-
-        var jsonPath = "brainsuite_state.json";
-        var subjs = ["1003", "1004", "1005", "1011", "1017"];
-        var processnames = ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
-                            "cerebrum masking", "initial cortex masking", "mask scrubbing",
-                            "topology correction", "inner cortex mask generation", "inner cortical surface generation"];//, "pial cortex", "labeled cortex"];
-        var shortnames = ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask", "initial cortex mask", "scrubbed cortex",
-                "topo-corrected", "inner cortex mask", "inner cortex"];//, "pial cortex", "labeled cortex");
-        var stepnames = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png", ".cortex.scrubbed.png",
-                ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.jpg"];//, ".pial.cortex.jpg", ".mid.cortex.svreg.jpg");
-        var subjectStates = [];
-
-        for (var i = 0; i < subjs.length; i++) {
-            subjectStates.push(-1);
-        }
     </script>
     <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
 
 </head>
 
 
-<body onload="startTimer()">
+<body>
     <div>
         <div class="roundrect" style="margin-right:px;">
             <p>showing subjects 1-5 of 5 subjects at size HARDCODE</p>
@@ -271,43 +343,10 @@
         <div id="tray" class="roundrect" style="margin-right:px"></div>
 
 
-        <div id="images" class="roundrect" style="overflow-y:scroll;height:400px;margin-right:px;">
-            <ul id='gallery'>
-                <li id="li0" style='border:2px solid black;'><img id="img0" src="1003/steps/1003.png" height=128px
-                                                                  onclick="loadSubjTray(0)">
-                    <div class='subjtext' id=p0>1003<br/>initializing</div>
-                    <div id="progressbar">
-                        <div id=d0></div>
-                    </div>
-                </li>
-                <li id="li1" style='border:2px solid black;'><img id="img1" src="1004/steps/1004.png" height=128px
-                                                                  onclick="loadSubjTray(1)">
-                    <div class='subjtext' id=p1>1004<br/>initializing</div>
-                    <div id="progressbar">
-                        <div id=d1></div>
-                    </div>
-                </li>
-                <li id="li2" style='border:2px solid black;'><img id="img2" src="1005/steps/1005.png" height=128px
-                                                                  onclick="loadSubjTray(2)">
-                    <div class='subjtext' id=p2>1005<br/>initializing</div>
-                    <div id="progressbar">
-                        <div id=d2></div>
-                    </div>
-                </li>
-                <li id="li3" style='border:2px solid black;'><img id="img3" src="1011/steps/1011.png" height=128px
-                                                                  onclick="loadSubjTray(3)">
-                    <div class='subjtext' id=p3>1011<br/>initializing</div>
-                    <div id="progressbar">
-                        <div id=d3></div>
-                    </div>
-                </li>
-                <li id="li4" style='border:2px solid black;'><img id="img4" src="1017/steps/1017.png" height=128px
-                                                                  onclick="loadSubjTray(4)">
-                    <div class='subjtext' id=p4>1017<br/>initializing</div>
-                    <div id="progressbar">
-                        <div id=d4></div>
-                    </div>
-                </li>
+        <div id="images" class="roundrect">
+            <ul id="gallery">
+                <!-- Dynamically init from initFromJSON() -->
+            </ul>
         </div> <!-- images frame -->
     </div>
 </body>
