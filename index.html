@@ -79,7 +79,7 @@
 
     <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
     <script type="text/javascript">
-        const JSON_PATH= "brainsuite_state.json";
+        const JSON_PATH= "/Data/brainsuite_state.json";
         const PROCESS_NAMES= ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
             "cerebrum masking", "initial cortex masking", "mask scrubbing",
             "topology correction", "inner cortex mask generation", "inner cortical surface generation"];//, "pial cortex", "labeled cortex"];
@@ -149,7 +149,10 @@
         }
 
 
-
+        /**
+         *
+         * @param id Pass in INDEX of selected subject
+         */
         function loadSubjTray(id) {
             selectedSubjectIndex = id;
 
@@ -159,31 +162,30 @@
                 if (id == sid) {
                     lid.style.borderColor = "#000080";
                 }
-                else
+                else{
                     lid.style.borderColor = "#000000";
+                }
             }
 
             var subjID = subjects[id];
             var prefix = subjID + "/thumbnails/" + subjID;
-            var stop = subjectStates[id];
-            alert(stop);
-            var imgstr = "<p>ID: " + subjID;
-            imgstr += "<br/>status:";
-            if (stop >= 0) {
-                imgstr += " finished " + PROCESS_NAMES[stop];// +
-                if (stop + 1 < PROCESS_NAMES.length) {
-                    imgstr += ",";
+            var subjectState = parseInt(subjectStates[id]);
+            var statusString = "<p>ID: " + subjID + "<br/>status:";
+            if (subjectState < 0){
+                //Invalid state, or init state
+                subjectState = 0;
+            } else {
+                statusString += " finished " + PROCESS_NAMES[subjectState];
+                if ( (subjectState + 1) < PROCESS_NAMES.length) {
+                    statusString += ", performing " + PROCESS_NAMES[subjectState + 1];
                 }
             }
-            if (stop + 1 < PROCESS_NAMES.length) {
-                imgstr += " performing " + PROCESS_NAMES[stop + 1];
+
+            statusString += "</p>";
+            for (var i = 0; i <= subjectState; i++) {
+                statusString += "<img src=" + prefix + STEP_NAMES[i] + " width=10%>";
             }
-            imgstr += "</p>";
-            if (stop < 0) stop = 0;
-            for (var i = 0; i <= stop; i++) {
-                imgstr += "<img src=" + prefix + STEP_NAMES[i] + " width=10%>";
-            }
-            $("#tray").html(imgstr);
+            $("#tray").html(statusString);
         }
 
 
@@ -224,18 +226,24 @@
         function setThumbSize(height) {
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 var theImg = document.getElementById('img' + subjectIndex);
-                if (theImg) theImg.height = height;
+                if (theImg){
+                    theImg.height = height;
+                }
+
                 var theSpan = document.getElementById('thumbsize');
-                if (theSpan) theSpan.innerHTML = height;
+                if (theSpan){
+                    theSpan.innerHTML = height;
+                }
 
             }
         }
 
         function updateImages(newStates) {
             loadSubjTray(selectedSubjectIndex);
+
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 {
-                    var newState = newStates[subjectIndex].state;
+                    var newState = parseInt(newStates[subjectIndex].state);
                     if (newState != subjectStates[subjectIndex]) {
                         var url = makeURL(subjectIndex, newState);
                         if (!url){
@@ -255,8 +263,6 @@
                             displayImage(makeURL(subjectIndex, newState), subjectIndex);
 
                             subjectStates[subjectIndex] = newState;
-                        }
-                        else {
                         }
                     }
                 }
@@ -338,11 +344,7 @@
 
             <p id="status">initializing</p>
         </div>
-
-
         <div id="tray" class="roundrect" style="margin-right:px"></div>
-
-
         <div id="images" class="roundrect">
             <ul id="gallery">
                 <!-- Dynamically init from initFromJSON() -->
