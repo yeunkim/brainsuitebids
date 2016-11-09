@@ -80,6 +80,7 @@
     <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
     <script type="text/javascript">
         const JSON_PATH= "/Data/brainsuite_state.json";
+        const DATA_PATH="/Data/"
         const PROCESS_NAMES= ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
             "cerebrum masking", "initial cortex masking", "mask scrubbing",
             "topology correction", "inner cortex mask generation", "inner cortical surface generation"];//, "pial cortex", "labeled cortex"];
@@ -153,13 +154,13 @@
          *
          * @param id Pass in INDEX of selected subject
          */
-        function loadSubjTray(id) {
-            selectedSubjectIndex = id;
+        function loadSubjTray(subjectIndex) {
+            selectedSubjectIndex = subjectIndex;
 
             //Handle border highlight
             for (var sid = 0; sid < subjects.length; sid++) {
                 var lid = document.getElementById("li" + sid);
-                if (id == sid) {
+                if (subjectIndex == sid) {
                     lid.style.borderColor = "#000080";
                 }
                 else{
@@ -167,9 +168,8 @@
                 }
             }
 
-            var subjID = subjects[id];
-            var prefix = subjID + "/thumbnails/" + subjID;
-            var subjectState = parseInt(subjectStates[id]);
+            var subjID = subjects[subjectIndex];
+            var subjectState = parseInt(subjectStates[subjectIndex]);
             var statusString = "<p>ID: " + subjID + "<br/>status:";
             if (subjectState < 0){
                 //Invalid state, or init state
@@ -183,7 +183,7 @@
 
             statusString += "</p>";
             for (var i = 0; i <= subjectState; i++) {
-                statusString += "<img src=" + prefix + STEP_NAMES[i] + " width=10%>";
+                statusString += "<img src=" + makeURL(subjectIndex, i) + " width=10%>";
             }
             $("#tray").html(statusString);
         }
@@ -212,13 +212,14 @@
 
 
         function makeURL(subjectIndex, state) {
+
             if (state < 0){
                 state = 0;
             }
             if (!STEP_NAMES[state]){
                 return null;
             }
-            return subjects[subjectIndex] + pathToThumbnails + subjects[subjectIndex] + STEP_NAMES[state];
+            return DATA_PATH + subjects[subjectIndex] + pathToThumbnails + subjects[subjectIndex] + STEP_NAMES[state];
         }
 
 
