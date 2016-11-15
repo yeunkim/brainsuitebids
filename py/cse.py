@@ -52,34 +52,12 @@ def updateStatusFile(placeholder):
 
 """
 
-def updateStatusFile(status):
-    f = open(STATUS_FILEPATH, "w")
+#Will need to add pngSuffix parameter
+def updateStatusFile(ph, statusPath, status):
+    f = open(statusPath, "w")
     f.write("%d" % status)
     f.close()
 
-
-def bseDone(ph):
-    updateStatusFile(1)
-def bfcDone(ph):
-    updateStatusFile(2)
-def pvcDone(ph):
-    updateStatusFile(3)
-def cerebroDone(ph):
-    updateStatusFile(4)
-def cortexDone(ph):
-    updateStatusFile(5)
-def scrubmaskDone(ph):
-    updateStatusFile(6)
-def tcaDone(ph):
-    updateStatusFile(7)
-def dewispDone(ph):
-    updateStatusFile(8)
-def dfsDone(ph):
-    updateStatusFile(9)
-def pialmeshDone(ph):
-    updateStatusFile(10)
-def hemisplitDone(ph):
-    updateStatusFile(11)
 
 def init():
     """
@@ -152,27 +130,55 @@ def runWorkflow():
 
 
     bseDoneWrapper = pe.Node(name="BSE_DONE_WRAPPER",
-                             interface=Function(input_names=["ph"], output_names=[],function=bseDone))
+                             interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     bfcDoneWrapper = pe.Node(name="BFC_DONE_WRAPPER",
-                             interface=Function(input_names=["ph"], output_names=[],function=bfcDone))
+                             interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     pvcDoneWrapper = pe.Node(name="PVC_DONE_WRAPPER",
-                             interface=Function(input_names=["ph"], output_names=[],function=pvcDone))
+                             interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     cerebroDoneWrapper = pe.Node(name="CEREBRO_DONE_WRAPPER",
-                                 interface=Function(input_names=["ph"], output_names=[],function=cerebroDone))
+                                 interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     cortexDoneWrapper = pe.Node(name="CORTEX_DONE_WRAPPER",
-                                interface=Function(input_names=["ph"], output_names=[],function=cortexDone))
+                                interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     scrubmaskDoneWrapper = pe.Node(name="SCRUBMASK_DONE_WRAPPER",
-                                   interface=Function(input_names=["ph"], output_names=[],function=scrubmaskDone))
+                                   interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     tcaDoneWrapper = pe.Node(name="TCA_DONE_WRAPPER",
-                             interface=Function(input_names=["ph"], output_names=[],function=tcaDone))
+                             interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     dewispDoneWrapper = pe.Node(name="DEWISP_DONE_WRAPPER",
-                                interface=Function(input_names=["ph"], output_names=[],function=dewispDone))
+                                interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     dfsDoneWrapper = pe.Node(name="DFS_DONE_WRAPPER",
-                             interface=Function(input_names=["ph"], output_names=[],function=dfsDone))
-    pialmeshDonerapper = pe.Node(name="PIALMESH_DONE_WRAPPER",
-                                 interface=Function(input_names=["ph"], output_names=[],function=pialmeshDone))
+                             interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+    pialmeshDoneWrapper = pe.Node(name="PIALMESH_DONE_WRAPPER",
+                                 interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
     hemisplitDoneWrapper = pe.Node(name="HEMISPLIT_DONE_WRAPPER",
-                                   interface=Function(input_names=["ph"], output_names=[],function=hemisplitDone))
+                                   interface=Function(input_names=["ph", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+    
+
+    bseDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    bfcDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    pvcDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    cerebroDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    cortexDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    scrubmaskDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    tcaDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    dewispDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    dfsDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    pialmeshDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    hemisplitDoneWrapper.inputs.statusPath = STATUS_FILEPATH
+    
+
+    bseDoneWrapper.inputs.status = 1
+    bfcDoneWrapper.inputs.status = 2
+    pvcDoneWrapper.inputs.status = 3
+    cerebroDoneWrapper.inputs.status = 4
+    cortexDoneWrapper.inputs.status = 5
+    scrubmaskDoneWrapper.inputs.status = 6
+    tcaDoneWrapper.inputs.status = 7
+    dewispDoneWrapper.inputs.status = 8
+    dfsDoneWrapper.inputs.status = 9
+    pialmeshDoneWrapper.inputs.status = 10
+    hemisplitDoneWrapper.inputs.status = 11
+    
+
 
 
     #brainsuite_workflow.add_nodes([bseObj, bfcObj, pvcObj, cerebroObj, cortexObj, scrubmaskObj, tcaObj, dewispObj, dfsObj, pialmeshObj, hemisplitObj])
@@ -210,7 +216,7 @@ def runWorkflow():
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', pialmeshObj, 'inputTissueFractionFile')
     brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', pialmeshObj, 'inputMaskFile')
     brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', hemisplitObj, 'pialSurfaceFile')
-    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', pialmeshDonerapper, 'ph')
+    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', pialmeshDoneWrapper, 'ph')
 
 
     brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', hemisplitObj, 'inputSurfaceFile')
