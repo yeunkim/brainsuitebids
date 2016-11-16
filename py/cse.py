@@ -1,3 +1,23 @@
+# -*- coding: utf-8 -*-
+"""
+cse.py
+
+Python script to run BrainSuite Cortical Surface Extraction routine
+To be called after validating data structure using checks.py
+
+Returns:
+    0 on successful processing run
+    1 on failure
+
+Usage:
+python cse.py DataBaseDirectory
+
+DataBaseDirectory represents base directory of a subject; should directly contain subjects .nii.gz data
+Example: %prog ~/Documents/webapp/Data/1000
+Expects no trailing slash
+"""
+
+
 from __future__ import unicode_literals, print_function
 #from builtins import str
 

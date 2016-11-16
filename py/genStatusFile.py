@@ -144,7 +144,7 @@ if __name__ == "__main__":
         brainsuiteState = open(createBrainSuiteStatePath(), 'w')
         brainsuiteState.write(jsonToWrite)
         brainsuiteState.close()
-        time.sleep(2)
+        time.sleep(3)
 
     print("All subjects complete.")
     exit(0)
