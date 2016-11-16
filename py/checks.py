@@ -47,16 +47,11 @@ from optparse import OptionParser
 from distutils.spawn import find_executable
 
 
-brainsuite_atlas_directory = ""
-
-baseDirectory = ""
-subjectDirectories = []
-
 # Checks for BrainSuite executables installed. Return True if installed, False else.
 #If True, sets brainsuite_atlas_directory to appropiate value
 def verifyBrainsuiteInstalled():
     if(find_executable('bse') and find_executable('svreg.sh') and find_executable('bdp.sh')):
-        brainsuite_atlas_directory = find_executable('bse')[:-3] + '../atlas/'
+        brainsuite_atlas_directory = find_executable('bse')[:-3] + '../atlas/' #Will not use here, but run this to make sure we can find our atlas directory
         return True
     else:
         print('Your system path has not been set up correctly.')
@@ -106,6 +101,9 @@ DataStructureFile expected format:
     except FileNotFoundError:
         print("Error: the file: %s is not found" % args[0])
         return False
+
+    baseDirectory = ""
+    subjectDirectories = []
 
     firstTime = True
     for line in structureFile:
