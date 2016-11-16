@@ -79,8 +79,8 @@
 
     <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
     <script type="text/javascript">
-        const JSON_PATH= "/Data/brainsuite_state.json";
-        const DATA_PATH="/Data/"
+        var JSON_PATH= "/Data/brainsuite_state.json";
+        var DATA_PATH= "/Data/";
         const PROCESS_NAMES= ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
             "cerebrum masking", "initial cortex masking", "mask scrubbing",
             "topology correction", "inner cortex mask generation", "inner cortical surface generation"];//, "pial cortex", "labeled cortex"];
@@ -99,6 +99,13 @@
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
         var imagePath;
+
+        function initPaths(){
+            var baseURL = document.URL.toString();
+            baseURL = baseURL.substring(0, baseURL.lastIndexOf("/"));
+            JSON_PATH = baseURL + JSON_PATH;
+            DATA_PATH = baseURL + DATA_PATH;
+        }
 
         function initFromJSON(){
             $.ajax({
@@ -212,7 +219,6 @@
 
 
         function makeURL(subjectIndex, state) {
-
             if (state < 0){
                 state = 0;
             }
@@ -326,6 +332,7 @@
                 if (imageport)
                     imageport.style.height = (viewPortHeight - 400) + "px";
             });
+            initPaths();
             initFromJSON();
             startTimer();
         });
