@@ -243,8 +243,7 @@ def runWorkflow():
     brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', hemisplitObj, 'inputHemisphereLabelFile')
     brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', hemisplitDoneWrapper, 'ph')
 
-
-    brainsuite_workflow.run()
+    brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
 
     #Print message when all processing is complete.
     print('Processing has completed.')
