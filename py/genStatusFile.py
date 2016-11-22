@@ -23,7 +23,7 @@ subjectsFile expected format:
 """
 
 from __future__ import unicode_literals, print_function
-#from builtins import str
+from builtins import str
 
 
 

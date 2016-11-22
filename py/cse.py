@@ -19,7 +19,7 @@ Expects no trailing slash
 
 
 from __future__ import unicode_literals, print_function
-#from builtins import str
+from builtins import str
 
 #Checking brainsuite executable path
 from distutils.spawn import find_executable
