@@ -81,8 +81,8 @@ def parseInput():
 
     version_msg = "%prog 1.0"
     usage_msg = """
-%prog DataStructureFile
-Expected format of DataStructureFile:
+%prog subjectsFile
+Expected format of subjectsFile:
     Path to Data directory
     Subject_dir_1
     ...

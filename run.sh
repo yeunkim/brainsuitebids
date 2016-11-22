@@ -15,6 +15,16 @@ then
     exit 1
 fi
 
+python ./py/checks.py $1
+if [ $? -ne 0 ]
+then
+    echo "Error. Checks.py failure."
+    echo "Exiting with error code 2"
+    exit 2
+fi
+#If checks.py passed, we know input file is well formatted, and is not empty
+
+
 THUMBNAILS_PATH="/thumbnails"
 LOG_PATH="/logging"
 BASE_DIRECTORY=""
@@ -29,20 +39,17 @@ do
         #echo ${subjectBase}${THUMBNAILS_PATH}/${line}.png
         mkdir -p ${subjectBase}${THUMBNAILS_PATH}
         volblend -i ${subjectBase}/${line}.nii.gz --view 3 -o ${subjectBase}${THUMBNAILS_PATH}/${line}.png
+        logFile=${BASE_DIRECTORY}${LOG_PATH}/${line}.log
+        logErrFile=${BASE_DIRECTORY}${LOG_PATH}/${line}.err.log
+        #qsub -V -cwd -o /ifshome/jwong/Documents/qsubTesting/test.log -e /ifshome/jwong/Documents/qsubTesting/test.err.log wrapper.sh 3
         #echo "AAA" > ${BASE_DIRECTORY}${LOG_PATH}/${line}.log
+        #./cseWrapper.sh ${subjectBase}
+        qsub cseQsubWrapper.sh ${subjectBase}
     fi
 done
 
-exit 1
+python ./py/genStatusFile.py $1
 
-python ./py/checks.py $1
-if [ $? -ne 0 ]
-then
-    echo "Error. Checks.py failure."
-    echo "Exiting with error code 2"
-    exit 2
-fi
+exit 0
 
-#If checks.py passed, we know input file is well formatted, and is not empty
-#qsub -S $(which python) -o /ifshome/jwong/Documents/qsubTesting/newFolder/test.log -e /ifshome/jwong/Documents/qsubTesting/newFolder/test.err.log test.py 123
-#volblend -i 1003.nii.gz --view 3 -o test.png
+#qsub -V -cwd -o /ifshome/jwong/Documents/qsubTesting/test.log -e /ifshome/jwong/Documents/qsubTesting/test.err.log wrapper.sh 3
