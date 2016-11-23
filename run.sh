@@ -26,6 +26,7 @@ fi
 
 
 THUMBNAILS_PATH="/thumbnails"
+STATUS_FILENAME="/status.txt"
 LOG_PATH="/logging"
 BASE_DIRECTORY=""
 for line in `grep -v "^[[:space:]]*$" $1`
@@ -39,6 +40,7 @@ do
         #echo ${subjectBase}${THUMBNAILS_PATH}/${line}.png
         mkdir -p ${subjectBase}${THUMBNAILS_PATH}
         volblend -i ${subjectBase}/${line}.nii.gz --view 3 -o ${subjectBase}${THUMBNAILS_PATH}/${line}.png
+        echo -1 > ${subjectBase}${STATUS_FILENAME}
         logFile=${BASE_DIRECTORY}${LOG_PATH}/${line}.log
         logErrFile=${BASE_DIRECTORY}${LOG_PATH}/${line}.err.log
         #qsub -V -cwd -o /ifshome/jwong/Documents/qsubTesting/test.log -e /ifshome/jwong/Documents/qsubTesting/test.err.log wrapper.sh 3
@@ -48,8 +50,11 @@ do
     fi
 done
 
+
+
 python ./py/genStatusFile.py $1
 
 exit 0
 
 #qsub -V -cwd -o /ifshome/jwong/Documents/qsubTesting/test.log -e /ifshome/jwong/Documents/qsubTesting/test.err.log wrapper.sh 3
+

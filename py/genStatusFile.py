@@ -136,8 +136,10 @@ def generateJSON():
 
 if __name__ == "__main__":
 
-
     parseInput()
+    
+    print("Creating file %s" % createBrainSuiteStatePath())
+    print("Continuously looping, and updating this status file until all processing is complete.")
 
     while not ALL_DONE:
         jsonToWrite = generateJSON()
