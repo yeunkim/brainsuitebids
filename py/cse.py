@@ -78,7 +78,7 @@ def updateStatusFile(ph, statusPath, status):
 
     STEP_PNG_SUFFIX = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
                        ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
-                       ".pial.cortex.png"]
+                       ".pial.cortex.png", ".left.png"]
 
     THUMBNAILS_PATH = os.path.dirname(statusPath) + "/thumbnails/"
 
@@ -86,10 +86,18 @@ def updateStatusFile(ph, statusPath, status):
     subject_id = subjectFile[:subjectFile.index(".")]
     outFile = THUMBNAILS_PATH + subject_id + STEP_PNG_SUFFIX[status]
 
-    command = ("volblend -i %s --view 3 -o %s" % (ph, outFile))
-    volblendReturnVal = os.system(command)
+    DFS_RENDER_OPTIONS = "--zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512"
 
-    print(volblendReturnVal)
+    command = ""
+    if status <= 8:
+        command = ("volblend -i %s --view 3 -o %s" % (ph, outFile))
+    else:
+        #From Pialmesh(step 9) onwards, we are dealing with dfs. Must use dfsrender
+        command = ("dfsrender08b_x86_64-redhat-linux-gnu -i %s -o %s %s" % (ph, outFile, DFS_RENDER_OPTIONS))
+
+    renderReturnValue = os.system(command)
+
+    print(renderReturnValue)
     print("Attempted to save at %s" % outFile)
 
     f = open(statusPath, "w")
