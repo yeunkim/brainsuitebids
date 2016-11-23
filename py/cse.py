@@ -74,6 +74,24 @@ def updateStatusFile(placeholder):
 
 #Will need to add pngSuffix parameter
 def updateStatusFile(ph, statusPath, status):
+    import os
+
+    STEP_PNG_SUFFIX = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
+                       ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
+                       ".pial.cortex.png"]
+
+    THUMBNAILS_PATH = os.path.dirname(statusPath) + "/thumbnails/"
+
+    subjectFile = os.path.basename(ph)
+    subject_id = subjectFile[:subjectFile.index(".")]
+    outFile = THUMBNAILS_PATH + subject_id + STEP_PNG_SUFFIX[status]
+
+    command = ("volblend -i %s --view 3 -o %s" % (ph, outFile))
+    volblendReturnVal = os.system(command)
+
+    print(volblendReturnVal)
+    print("Attempted to save at %s" % outFile)
+
     f = open(statusPath, "w")
     f.write("%d" % status)
     f.close()
