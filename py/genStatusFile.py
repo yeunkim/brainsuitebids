@@ -28,6 +28,7 @@ from builtins import str
 
 
 import os, sys, json, time
+from datetime import datetime
 from optparse import OptionParser
 
 
@@ -39,6 +40,11 @@ STATUS_NAME = "status.txt"
 ALL_DONE = False
 
 DONE_STATE = "11"
+
+
+#For timing
+START_TIME = None
+START_TIME_STRING = ""
 
 def createSubjectDirectory(base, subject):
     """Returns base/subject"""
@@ -105,11 +111,17 @@ DataStructureFile expected format:
 
 
 def generateJSON():
+    global START_TIME
+    global START_TIME_STRING
+
     j = {}
-    j['status'] = 'TODO_HARDCODE'
-    j['start_time'] = 'TODO_HARDCODE'
-    j['update_time'] = 'TODO_HARDCODE'
-    j['runtime'] = 'TODO_HARDCODE'
+    j['status'] = 'TODO'
+    if START_TIME is None:
+        START_TIME = datetime.now()
+        START_TIME_STRING = str(START_TIME)
+    j['start_time'] = START_TIME_STRING
+    j['update_time'] = 'TODO'
+    j['runtime'] = str(datetime.now() - START_TIME)
     j['path_to_thumbnails'] = PATH_TO_THUMBNAILS
 
     subjectsJSONArray = []
@@ -146,7 +158,9 @@ if __name__ == "__main__":
         brainsuiteState = open(createBrainSuiteStatePath(), 'w')
         brainsuiteState.write(jsonToWrite)
         brainsuiteState.close()
-        time.sleep(3)
+        time.sleep(1)
+
+
 
     print("All subjects complete.")
     exit(0)

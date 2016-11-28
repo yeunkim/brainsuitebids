@@ -83,9 +83,9 @@
         var DATA_PATH= "/Data/";
         const PROCESS_NAMES= ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
             "cerebrum masking", "initial cortex masking", "mask scrubbing",
-            "topology correction", "inner cortex mask generation", "inner cortical surface generation"];//, "pial cortex", "labeled cortex"];
+            "topology correction", "inner cortex mask generation", "inner cortical surface generation", "pial cortex", "hemisphere splitting. Processing complete."]; //"labeled cortex"];
         const SHORT_NAMES = ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask", "initial cortex mask", "scrubbed cortex",
-            "topo-corrected", "inner cortex mask", "inner cortex"];//, "pial cortex", "labeled cortex");
+            "topo-corrected", "inner cortex mask", "inner cortex", "pial cortex", "hemisphere split"]; //"labeled cortex"];
         const STEP_NAMES = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png", ".cortex.scrubbed.png",
             ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png", ".pial.cortex.png", ".left.png"];
 
@@ -310,7 +310,7 @@
         }
 
         function startTimer() {
-            setInterval(scanJSON, 3000);
+            setInterval(scanJSON, 1000);
             setStatus("initializing images");
         }
 
@@ -345,8 +345,7 @@
 <body>
     <div>
         <div class="roundrect" style="margin-right:px;">
-            <p>showing subjects 1-5 of 5 subjects at size HARDCODE</p>
-
+            <p style="display:inline">showing subjects 1-5 of 5 subjects at thumbnail size </p>
                 <span id="thumbsize">128</span>
                 <div id="slider" style="height: 15px; width:256px"></div>
 
