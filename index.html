@@ -190,7 +190,7 @@
 
             statusString += "</p>";
             for (var i = 0; i <= subjectState; i++) {
-                statusString += "<img src=" + makeURL(subjectIndex, i) + " width=10%>";
+                statusString += "<img src='" + makeURL(subjectIndex, i) + "' title='" + SHORT_NAMES[i] + "' width=" + (100 * 1 / PROCESS_NAMES.length) + "%>";
             }
             $("#tray").html(statusString);
         }
@@ -345,7 +345,7 @@
 <body>
     <div>
         <div class="roundrect" style="margin-right:px;">
-            <p style="display:inline">showing subjects 1-5 of 5 subjects at thumbnail size </p>
+            <p style="display:inline">showing subjects TODO of TODO subjects at thumbnail size </p>
                 <span id="thumbsize">128</span>
                 <div id="slider" style="height: 15px; width:256px"></div>
 

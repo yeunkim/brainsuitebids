@@ -121,7 +121,7 @@ def generateJSON():
         START_TIME_STRING = str(START_TIME)
     j['start_time'] = START_TIME_STRING
     j['update_time'] = 'TODO'
-    j['runtime'] = str(datetime.now() - START_TIME)
+    j['runtime'] = str(datetime.now() - START_TIME).rsplit(".", 1)[0]
     j['path_to_thumbnails'] = PATH_TO_THUMBNAILS
 
     subjectsJSONArray = []
