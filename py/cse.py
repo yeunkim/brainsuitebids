@@ -72,7 +72,7 @@ def updateStatusFile(placeholder):
 
 """
 
-def updateStatusFile(fileName, statusPath, status):
+def updateStatusFile(connectFile, secondaryFile, statusPath, status):
     import os
 
     STEP_PNG_SUFFIX = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
@@ -81,7 +81,7 @@ def updateStatusFile(fileName, statusPath, status):
 
     THUMBNAILS_PATH = os.path.dirname(statusPath) + "/thumbnails/"
 
-    subjectFile = os.path.basename(fileName)
+    subjectFile = os.path.basename(connectFile)
     subject_id = subjectFile[:subjectFile.index(".")]
     outFile = THUMBNAILS_PATH + subject_id + STEP_PNG_SUFFIX[status]
 
@@ -89,10 +89,25 @@ def updateStatusFile(fileName, statusPath, status):
 
     command = ""
     if status <= 8:
-        command = ("volblend -i %s --view 3 -o %s" % (fileName, outFile))
+        command = ""
+        if status == 1:
+            #bse
+            command = ("volblend -i %s -m %s --view 3 -o %s" % (connectFile, secondaryFile, outFile))
+        elif status == 2:
+            #bfc
+            command = ("volblend -i %s --view 3 -o %s" % (connectFile, outFile))
+        elif status == 3:
+            #pvc
+            command = ("volblend -i %s -l %s --view 3 -o %s" % (secondaryFile, connectFile, outFile))
+        else:
+            command = ("volblend -i %s -m %s --view 3 -o %s" % (secondaryFile, connectFile, outFile))
+
+
+
+
     else:
         #From Pialmesh(step 9) onwards, we are dealing with dfs. Must use dfsrender
-        command = ("dfsrender08b_x86_64-redhat-linux-gnu -i %s -o %s %s" % (fileName, outFile, DFS_RENDER_OPTIONS))
+        command = ("dfsrender08b_x86_64-redhat-linux-gnu -i %s -o %s %s" % (connectFile, outFile, DFS_RENDER_OPTIONS))
 
     renderReturnValue = os.system(command)
 
@@ -174,28 +189,44 @@ def runWorkflow():
     hemisplitObj=pe.Node(interface=bs.Hemisplit(),name='HEMISPLIT')
 
 
+    #Changes from default settings
+    bseObj.inputs.diffusionConstant = 15 #-d
+    bseObj.inputs.edgeDetectionConstant = 0.75 #-s
+
+    bfcObj.inputs.histogramType = "ellipse" #--ellipse
+
+    pvcObj.inputs.spatialPrior = 0.1 #-l
+
+    cortexObj.inputs.includeAllSubcorticalAreas = False #turn off the default -a
+
+    #Not changing DFS
+    #Not changing pialmesh
+
+    #End changes from default
+
+
     bseDoneWrapper = pe.Node(name="BSE_DONE_WRAPPER",
-                             interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     bfcDoneWrapper = pe.Node(name="BFC_DONE_WRAPPER",
-                             interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     pvcDoneWrapper = pe.Node(name="PVC_DONE_WRAPPER",
-                             interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     cerebroDoneWrapper = pe.Node(name="CEREBRO_DONE_WRAPPER",
-                                 interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                                 interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     cortexDoneWrapper = pe.Node(name="CORTEX_DONE_WRAPPER",
-                                interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                                interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     scrubmaskDoneWrapper = pe.Node(name="SCRUBMASK_DONE_WRAPPER",
-                                   interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                                   interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     tcaDoneWrapper = pe.Node(name="TCA_DONE_WRAPPER",
-                             interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     dewispDoneWrapper = pe.Node(name="DEWISP_DONE_WRAPPER",
-                                interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                                interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     dfsDoneWrapper = pe.Node(name="DFS_DONE_WRAPPER",
-                             interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     pialmeshDoneWrapper = pe.Node(name="PIALMESH_DONE_WRAPPER",
-                                 interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                                 interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     hemisplitDoneWrapper = pe.Node(name="HEMISPLIT_DONE_WRAPPER",
-                                   interface=Function(input_names=["fileName", "statusPath", "status", "pngPrefix"], output_names=[],function=updateStatusFile))
+                                   interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
     
 
     bseDoneWrapper.inputs.statusPath = STATUS_FILEPATH
@@ -229,44 +260,55 @@ def runWorkflow():
     #brainsuite_workflow.add_nodes([bseObj, bfcObj, pvcObj, cerebroObj, cortexObj, scrubmaskObj, tcaObj, dewispObj, dfsObj, pialmeshObj, hemisplitObj])
 
     brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bfcObj, 'inputMRIFile')
-    brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bseDoneWrapper, 'fileName')
+    #brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bseDoneWrapper, 'connectFile')
+    bseDoneWrapper.inputs.connectFile = INPUT_MRI_FILE
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', bseDoneWrapper, 'secondaryFile')
 
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', pvcObj, 'inputMRIFile')
-    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', bfcDoneWrapper, 'fileName')
-
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', bfcDoneWrapper, 'connectFile')
+    bfcDoneWrapper.inputs.secondaryFile = None
 
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', cortexObj, 'inputTissueFractionFile')
-    brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', pvcDoneWrapper, 'fileName')
+    brainsuite_workflow.connect(pvcObj, 'outputLabelFile', pvcDoneWrapper, 'connectFile')
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', pvcDoneWrapper, 'secondaryFile')
+
 
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', cerebroObj, 'inputMRIFile')
     brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', cortexObj, 'inputHemisphereLabelFile')
-    brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', cerebroDoneWrapper, 'fileName')
+    brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', cerebroDoneWrapper, 'connectFile')
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', cerebroDoneWrapper, 'secondaryFile')
 
     brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', scrubmaskObj, 'inputMaskFile')
-    brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', cortexDoneWrapper, 'fileName')
+    brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', cortexDoneWrapper, 'connectFile')
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', cortexDoneWrapper, 'secondaryFile')
 
-    brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', scrubmaskDoneWrapper, 'fileName')
+    brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', scrubmaskDoneWrapper, 'connectFile')
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', scrubmaskDoneWrapper, 'secondaryFile')
 
 
     brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', tcaObj, 'inputMaskFile')
     brainsuite_workflow.connect(tcaObj, 'outputMaskFile', dewispObj, 'inputMaskFile')
-    brainsuite_workflow.connect(tcaObj, 'outputMaskFile', tcaDoneWrapper, 'fileName')
+    brainsuite_workflow.connect(tcaObj, 'outputMaskFile', tcaDoneWrapper, 'connectFile')
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', tcaDoneWrapper, 'secondaryFile')
 
     brainsuite_workflow.connect(dewispObj, 'outputMaskFile', dfsObj, 'inputVolumeFile')
-    brainsuite_workflow.connect(dewispObj, 'outputMaskFile', dewispDoneWrapper, 'fileName')
+    brainsuite_workflow.connect(dewispObj, 'outputMaskFile', dewispDoneWrapper, 'connectFile')
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', dewispDoneWrapper, 'secondaryFile')
 
     brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', pialmeshObj, 'inputSurfaceFile')
-    brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', dfsDoneWrapper, 'fileName')
+    brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', dfsDoneWrapper, 'connectFile')
+    dfsDoneWrapper.inputs.secondaryFile = None
 
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', pialmeshObj, 'inputTissueFractionFile')
     brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', pialmeshObj, 'inputMaskFile')
     brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', hemisplitObj, 'pialSurfaceFile')
-    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', pialmeshDoneWrapper, 'fileName')
-
+    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', pialmeshDoneWrapper, 'connectFile')
+    pialmeshDoneWrapper.inputs.secondaryFile = None
 
     brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', hemisplitObj, 'inputSurfaceFile')
     brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', hemisplitObj, 'inputHemisphereLabelFile')
-    brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', hemisplitDoneWrapper, 'fileName')
+    brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', hemisplitDoneWrapper, 'connectFile')
+    hemisplitDoneWrapper.inputs.secondaryFile = None
 
     brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
 

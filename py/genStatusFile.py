@@ -118,7 +118,7 @@ def generateJSON():
     j['status'] = 'TODO'
     if START_TIME is None:
         START_TIME = datetime.now()
-        START_TIME_STRING = str(START_TIME)
+        START_TIME_STRING = str(START_TIME).rsplit(".", 1)[0]
     j['start_time'] = START_TIME_STRING
     j['update_time'] = 'TODO'
     j['runtime'] = str(datetime.now() - START_TIME).rsplit(".", 1)[0]
