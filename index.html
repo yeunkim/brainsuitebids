@@ -178,7 +178,7 @@
                         <div class="subjtext" id="text${i}">${subjects[i]}<br>Initializing</div>
                         <div class="progressbar">
                             <div class="progressCompleted" id="progress${i}">
-                            <div class="progressShown" id="progressShown${i}"></div>
+                                <div class="progressShown" id="progressShown${i}"></div>
                             </div>
                         </div>
                     </li>
@@ -278,16 +278,17 @@
             var maxState = $("#slider_showstage").slider("option", "value");
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 {
+                    var statePct = 0;
                     var newState = parseInt(newStates[subjectIndex].state);
+                    if (newState > 0) {
+                        statePct = Math.min(1, newState / (SHORT_NAMES.length - 1));
+                    }
+
                     if (newState != subjectStates[subjectIndex]) {
                         subjectStates[subjectIndex] = newState;
                         
                         document.getElementById("text" + subjectIndex).innerHTML = subjects[subjectIndex] + "<br/>" + SHORT_NAMES[newState];
                         
-                        var statePct = 0;
-                        if (newState > 0) {
-                            statePct = Math.min(1, newState / (SHORT_NAMES.length - 1));
-                        }
                         document.getElementById("progress" + subjectIndex).style.width = 100 * statePct + "%";
                     }
                     
@@ -301,7 +302,7 @@
                     }
 
                     var showPct = 0;
-                    showPct = Math.min(1, maxState / (SHORT_NAMES.length - 1));
+                    showPct = (stateToShow / (SHORT_NAMES.length - 1)) / statePct;
                     document.getElementById("progressShown" + subjectIndex).style.width = 100 * showPct + "%";
                 }
             }
