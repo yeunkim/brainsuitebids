@@ -56,25 +56,36 @@
             padding: 3px;
         }
 
-        .progressbar > div {
+        .progressCompleted {
             background-color: #B0B0B0;
             padding: 0px;
             width: 0%; /* Adjust with JavaScript */
             height: 6px;
+            border-radius: 2px;
+            padding: 0.5px;
+        }
+
+        .progressShown {
+            background-color: #000080;
+            padding: 0px;
+            vertical-align: middle;
+            height: 5px;
+            width: 0%; /* Adjust with JavaScript */
             border-radius: 3px;
         }
+
         #images  {
             overflow-y:scroll;
             height:400px;
         }
         #slider_thumbsize {
             height: 15px;
-            width:75%;
+            width:60%;
             float:right;
         }
         #slider_showstage {
             height: 15px;
-            width:75%;
+            width:60%;
             float:right;
         }
 
@@ -91,19 +102,24 @@
     <script type="text/javascript">
         var JSON_PATH= "/Data/brainsuite_state.json";
         var DATA_PATH= "/Data/";
-        const PROCESS_NAMES= ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
-                          "cerebrum masking", "initial cortex masking", "mask scrubbing",
-                          "topology correction", "inner cortex mask generation", "inner cortical surface generation",
-                  "pial cortex", "hemisphere splitting. Processing complete."]; //"labeled cortex"];
+        const PROCESS_NAMES = 
+            ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
+             "cerebrum masking", "initial cortex masking", "mask scrubbing",
+             "topology correction", "inner cortex mask generation", "inner cortical surface generation",
+             "pial cortex", "hemisphere splitting"]; //"labeled cortex"];
 
-        const SHORT_NAMES = ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask",
-                 "initial cortex mask", "scrubbed cortex", "topo-corrected", "inner cortex mask",
-                 "inner cortex", "pial cortex", "hemisphere split"]; //"labeled cortex"];
+        const SHORT_NAMES =
+            ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask",
+             "initial cortex mask", "scrubbed cortex", "topo-corrected", "inner cortex mask",
+             "inner cortex", "pial cortex", "hemisphere split"]; //"labeled cortex"];
 
-        const STEP_NAMES = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
-                ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
-                ".pial.cortex.png", ".left.png"];
-
+        const STEP_NAMES =
+            [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
+             ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
+             ".pial.cortex.png", ".left.png"];
+        
+        const DEFAULT_THUMB_SIZE = 128;
+        const DEFAULT_SHOWSTAGE = PROCESS_NAMES.length - 1
 
         var selectedSubjectIndex = 0;
         var ajaxLock = false;
@@ -136,7 +152,9 @@
                                 subjects.push(json.subjects[i].name);
                                 subjectStates.push(-1);
                             }
-
+                            setSubjectCount(subjects.length);
+                            setShowStage(DEFAULT_SHOWSTAGE);
+                            setThumbSize(DEFAULT_THUMB_SIZE);
                             initGallery();
 
                         }
@@ -159,7 +177,9 @@
                         <img id="img${i}" height="128px" onclick="loadSubjTray(${i})" />
                         <div class="subjtext" id="text${i}">${subjects[i]}<br>Initializing</div>
                         <div class="progressbar">
-                            <div id="progress${i}"></div>
+                            <div class="progressCompleted" id="progress${i}">
+                            <div class="progressShown" id="progressShown${i}"></div>
+                            </div>
                         </div>
                     </li>
                     `
@@ -215,9 +235,6 @@
             $("#message").html(messageString);
         }
 
-        function displayImage(image, id) {
-            document.getElementById("img" + id).src = image;
-        }
 
         function urlExists(testUrl) { // this will return 200 on success, and 0 or negative value on error
             var http = jQuery.ajax({
@@ -225,7 +242,7 @@
                 url: testUrl,
                 async: false
             });
-            return http.status;
+            return (http.status === 200);
         }
 
 
@@ -241,50 +258,55 @@
 
 
 
-        function setThumbSize(height) {
+        function setThumbSize(height){
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 $("#img" + subjectIndex).attr("height", height);
-
-
             }
             $("#thumbsize").html(height);
         }
 
         function setShowStage(stage){
-            $("#showstage").html(SHORT_NAMES[stage]);
+            $("#showstage").html(PROCESS_NAMES[stage]);
+        }
+        
+        function setSubjectCount(n){
+            $("#subjectCount").html(n);
         }
 
-        function updateImages(newStates) {
+        function updateImages(newStates){
             loadSubjTray(selectedSubjectIndex);
-
+            var maxState = $("#slider_showstage").slider("option", "value");
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 {
                     var newState = parseInt(newStates[subjectIndex].state);
                     if (newState != subjectStates[subjectIndex]) {
-                        var url = makeURL(subjectIndex, newState);
-                        if (!url){
-                            continue;
+                        subjectStates[subjectIndex] = newState;
+                        
+                        document.getElementById("text" + subjectIndex).innerHTML = subjects[subjectIndex] + "<br/>" + SHORT_NAMES[newState];
+                        
+                        var statePct = 0;
+                        if (newState > 0) {
+                            statePct = Math.min(1, newState / (SHORT_NAMES.length - 1));
                         }
-                        var check = urlExists(url);
-                        if (check == 200) {
-                            var statePct = 0;
-                            if (newState > 0) {
-                                statePct = newState / (SHORT_NAMES.length - 1);
-                            }
-                            if (statePct > 1){
-                                statePct = 1;
-                            }
-                            document.getElementById("progress" + subjectIndex).style.width = 100 * statePct + "%";
-                            document.getElementById("text" + subjectIndex).innerHTML = subjects[subjectIndex] + "<br/>" + SHORT_NAMES[newState];
-                            displayImage(makeURL(subjectIndex, newState), subjectIndex);
-
-                            subjectStates[subjectIndex] = newState;
-                        }
+                        document.getElementById("progress" + subjectIndex).style.width = 100 * statePct + "%";
                     }
+                    
+                    var stateToShow = Math.min(newState, maxState);
+                    var url = makeURL(subjectIndex, stateToShow);;
+                    if (!url){
+                        continue;
+                    }
+                    if (urlExists(url)) {
+                        $("#img" + subjectIndex).attr("src", url);
+                    }
+
+                    var showPct = 0;
+                    showPct = Math.min(1, maxState / (SHORT_NAMES.length - 1));
+                    document.getElementById("progressShown" + subjectIndex).style.width = 100 * showPct + "%";
                 }
             }
+            
         }
-
 
         function scanJSON() {
             if (ajaxLock){
@@ -299,9 +321,9 @@
                     ajaxLock = true;
 
                     if (json) {
-                        var statusString = json.status;
-                        statusString += "started at: " + json.start_time;
-                        statusString += "<br/>runtime: " + json.runtime;
+                        var statusString = json.status + "<br/>"
+                        statusString += "started at: " + json.start_time + "<br/>";
+                        statusString += "runtime: " + json.runtime;
                         if (json.subjects) {
                             setStatus(statusString);
                             updateImages(json.subjects);
@@ -322,23 +344,23 @@
         }
 
         $(document).ready(function(){
-
+            
             $(function () {
                 $("#slider_thumbsize").slider({
                     slide: function (event, ui) {
                         setThumbSize(ui.value);
                     },
-                    animate: "fast", min: 64, max: 512, value: 128
+                    animate: "fast", min: 64, max: 512, value: DEFAULT_THUMB_SIZE
                 });
- 
+            }); 
+
             $(function () {
                 $("#slider_showstage").slider({
                     slide: function (event, ui) {
                         setShowStage(ui.value);
                     },
-                    animate: "fast", min:0 , max: PROCESS_NAMES.length - 1, value: PROCESS_NAMES.length - 1
+                    animate: "fast", min:0 , max: PROCESS_NAMES.length - 1, value: DEFAULT_SHOWSTAGE
                 });
-            });
            });
 
             $(window).resize(function () {
@@ -348,9 +370,9 @@
                 if (imageport)
                     imageport.style.height = (viewPortHeight - 400) + "px";
             });
+            
             initPaths();
             initFromJSON();
-            $("#slider_thumbsize").slider().trigger("slide");
             startTimer();
         });
     </script>
@@ -363,15 +385,22 @@
     <div>
         <div class="roundrect" style="margin-right:px;">
             <center style="font-size:150%">BrainSuite QC System</center>
-            <div style="width:70%">
             <p id="status">initializing</p>
-                <span>Thumbnail Size</span>
+            <div>
+                <span>Showing </span>
+                <span id="subjectCount">N</span>
+                <span> subjects up to </span>
+                <span id="showstage"></span>
+                <span>at size </span>
                 <span id="thumbsize"></span>
+                <p />
+            </div>
+            <div style="width:75%">
+                <span>Thumbnail Size</span>
                 <div id="slider_thumbsize"></div>
             </div>
-            <div style="width:70%">
+            <div style="width:75%">
                 <span>Show Stage</span>
-                <span id="showstage"></span>
                 <div id = "slider_showstage"></div>
             </div>
         </div>
