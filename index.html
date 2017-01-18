@@ -67,6 +67,16 @@
             overflow-y:scroll;
             height:400px;
         }
+        #slider_thumbsize {
+            height: 15px;
+            width:75%;
+            float:right;
+        }
+        #slider_showstage {
+            height: 15px;
+            width:75%;
+            float:right;
+        }
 
     </style>
 
@@ -82,23 +92,24 @@
         var JSON_PATH= "/Data/brainsuite_state.json";
         var DATA_PATH= "/Data/";
         const PROCESS_NAMES= ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
-            "cerebrum masking", "initial cortex masking", "mask scrubbing",
-            "topology correction", "inner cortex mask generation", "inner cortical surface generation", "pial cortex", "hemisphere splitting. Processing complete."]; //"labeled cortex"];
-        const SHORT_NAMES = ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask", "initial cortex mask", "scrubbed cortex",
-            "topo-corrected", "inner cortex mask", "inner cortex", "pial cortex", "hemisphere split"]; //"labeled cortex"];
-        const STEP_NAMES = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png", ".cortex.scrubbed.png",
-            ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png", ".pial.cortex.png", ".left.png"];
+                          "cerebrum masking", "initial cortex masking", "mask scrubbing",
+                          "topology correction", "inner cortex mask generation", "inner cortical surface generation",
+                  "pial cortex", "hemisphere splitting. Processing complete."]; //"labeled cortex"];
+
+        const SHORT_NAMES = ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask",
+                 "initial cortex mask", "scrubbed cortex", "topo-corrected", "inner cortex mask",
+                 "inner cortex", "pial cortex", "hemisphere split"]; //"labeled cortex"];
+
+        const STEP_NAMES = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
+                ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
+                ".pial.cortex.png", ".left.png"];
 
 
         var selectedSubjectIndex = 0;
-        var stateCount = 0;
         var ajaxLock = false;
-
-        //var subjects = ["1003", "1004", "1005", "1011", "1017"];
         var pathToThumbnails;
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
-        var imagePath;
 
         function initPaths(){
             var baseURL = document.URL.toString();
@@ -232,17 +243,15 @@
 
         function setThumbSize(height) {
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
-                var theImg = document.getElementById('img' + subjectIndex);
-                if (theImg){
-                    theImg.height = height;
-                }
+                $("#img" + subjectIndex).attr("height", height);
 
-                var theSpan = document.getElementById('thumbsize');
-                if (theSpan){
-                    theSpan.innerHTML = height;
-                }
 
             }
+            $("#thumbsize").html(height);
+        }
+
+        function setShowStage(stage){
+            $("#showstage").html(SHORT_NAMES[stage]);
         }
 
         function updateImages(newStates) {
@@ -290,11 +299,9 @@
                     ajaxLock = true;
 
                     if (json) {
-                        var statusString = "update " + stateCount + ": " + json.status;
-                        statusString += "<br/>started at: " + json.start_time;
-                        statusString += "<br/>last update at: " + json.update_time;
+                        var statusString = json.status;
+                        statusString += "started at: " + json.start_time;
                         statusString += "<br/>runtime: " + json.runtime;
-                        stateCount++;
                         if (json.subjects) {
                             setStatus(statusString);
                             updateImages(json.subjects);
@@ -317,13 +324,22 @@
         $(document).ready(function(){
 
             $(function () {
-                $("#slider").slider({
+                $("#slider_thumbsize").slider({
                     slide: function (event, ui) {
                         setThumbSize(ui.value);
                     },
-                    animate: "fast", min: 32, max: 512, value: 128
+                    animate: "fast", min: 64, max: 512, value: 128
+                });
+ 
+            $(function () {
+                $("#slider_showstage").slider({
+                    slide: function (event, ui) {
+                        setShowStage(ui.value);
+                    },
+                    animate: "fast", min:0 , max: PROCESS_NAMES.length - 1, value: PROCESS_NAMES.length - 1
                 });
             });
+           });
 
             $(window).resize(function () {
                 var viewportWidth = $(window).width();
@@ -334,6 +350,7 @@
             });
             initPaths();
             initFromJSON();
+            $("#slider_thumbsize").slider().trigger("slide");
             startTimer();
         });
     </script>
@@ -345,12 +362,20 @@
 <body>
     <div>
         <div class="roundrect" style="margin-right:px;">
-            <p style="display:inline">showing subjects TODO of TODO subjects at thumbnail size </p>
-                <span id="thumbsize">128</span>
-                <div id="slider" style="height: 15px; width:256px"></div>
-
+            <center style="font-size:150%">BrainSuite QC System</center>
+            <div style="width:70%">
             <p id="status">initializing</p>
+                <span>Thumbnail Size</span>
+                <span id="thumbsize"></span>
+                <div id="slider_thumbsize"></div>
+            </div>
+            <div style="width:70%">
+                <span>Show Stage</span>
+                <span id="showstage"></span>
+                <div id = "slider_showstage"></div>
+            </div>
         </div>
+
         <div id="tray" class="roundrect" style="margin-right:px"></div>
         <div id="images" class="roundrect">
             <ul id="gallery">
@@ -359,3 +384,4 @@
         </div> <!-- images frame -->
     </div>
 </body>
+

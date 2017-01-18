@@ -110,17 +110,21 @@ DataStructureFile expected format:
                 SUBJECTS.append(line)
 
 
-def generateJSON():
+def generateJSON(processingComplete):
     global START_TIME
     global START_TIME_STRING
 
     j = {}
-    j['status'] = 'TODO'
     if START_TIME is None:
         START_TIME = datetime.now()
         START_TIME_STRING = str(START_TIME).rsplit(".", 1)[0]
+
+    if processingComplete:
+        j['status'] = "All processing complete"
+    else:
+        j['status'] = "Processing in progress"
+    
     j['start_time'] = START_TIME_STRING
-    j['update_time'] = 'TODO'
     j['runtime'] = str(datetime.now() - START_TIME).rsplit(".", 1)[0]
     j['path_to_thumbnails'] = PATH_TO_THUMBNAILS
 
@@ -154,13 +158,18 @@ if __name__ == "__main__":
     print("Continuously looping, and updating this status file until all processing is complete.")
 
     while not ALL_DONE:
-        jsonToWrite = generateJSON()
+        jsonToWrite = generateJSON(False)
         brainsuiteState = open(createBrainSuiteStatePath(), 'w')
         brainsuiteState.write(jsonToWrite)
         brainsuiteState.close()
         time.sleep(1)
 
-
+    #Generate final completed stage
+    jsonToWrite = generateJSON(True)
+    brainsuiteState = open(createBrainSuiteStatePath(), 'w')
+    brainsuiteState.write(jsonToWrite)
+    brainsuiteState.close()
 
     print("All subjects complete.")
     exit(0)
+
