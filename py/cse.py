@@ -73,6 +73,8 @@ def updateStatusFile(placeholder):
 """
 
 def updateStatusFile(connectFile, secondaryFile, statusPath, status):
+    #Checking brainsuite executable path
+    from distutils.spawn import find_executable
     import os
 
     STEP_PNG_SUFFIX = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
@@ -90,17 +92,21 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status):
     command = ""
     if status <= 8:
         command = ""
+        PNG_OPTIONS = "--view 3 --slice 60"
         if status == 1:
             #bse
-            command = ("volblend -i %s -m %s --view 3 -o %s" % (connectFile, secondaryFile, outFile))
+            command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, connectFile, secondaryFile, outFile))
         elif status == 2:
             #bfc
-            command = ("volblend -i %s --view 3 -o %s" % (connectFile, outFile))
+            command = ("volblend %s -i %s -o %s" % (PNG_OPTIONS, connectFile, outFile))
         elif status == 3:
             #pvc
-            command = ("volblend -i %s -l %s --view 3 -o %s" % (secondaryFile, connectFile, outFile))
+
+            #NOTE: Change this code when label description xml file changes
+            LABEL_DESCRIPTION_FILE = find_executable('bse')[:-3] + '../labeldesc/brainsuite_labeldescriptions_14May2014.xml'
+            command = ("volblend %s -i %s -l %s -o %s -x %s" % (PNG_OPTIONS, secondaryFile, connectFile, outFile, LABEL_DESCRIPTION_FILE))
         else:
-            command = ("volblend -i %s -m %s --view 3 -o %s" % (secondaryFile, connectFile, outFile))
+            command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, secondaryFile, connectFile, outFile))
 
 
 
@@ -111,8 +117,7 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status):
 
     renderReturnValue = os.system(command)
 
-    print(renderReturnValue)
-    print("Saving thumbnail at %s" % outFile)
+    print("Saving thumbnail at: %s" % outFile)
 
     f = open(statusPath, "w")
     f.write("%d" % status)
@@ -130,7 +135,6 @@ def init():
     global WORKFLOW_NAME
     global INPUT_MRI_FILE
     global STATUS_FILEPATH
-
 
     BRAINSUITE_ATLAS_DIRECTORY = find_executable('bse')[:-3] + '../atlas/'
 

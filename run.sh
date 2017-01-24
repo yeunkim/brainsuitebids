@@ -29,6 +29,7 @@ THUMBNAILS_PATH="/thumbnails"
 STATUS_FILENAME="/status.txt"
 LOG_PATH="/logging"
 BASE_DIRECTORY=""
+PNG_OPTIONS="--view 3 --slice 60"
 for line in `grep -v "^[[:space:]]*$" $1`
 do
     if [ -z ${BASE_DIRECTORY} ]
@@ -39,14 +40,11 @@ do
         subjectBase=${BASE_DIRECTORY}/${line}
         #echo ${subjectBase}${THUMBNAILS_PATH}/${line}.png
         mkdir -p ${subjectBase}${THUMBNAILS_PATH}
-        volblend -i ${subjectBase}/${line}.nii.gz --view 3 -o ${subjectBase}${THUMBNAILS_PATH}/${line}.png
+        volblend $PNG_OPTIONS -i ${subjectBase}/${line}.nii.gz -o ${subjectBase}${THUMBNAILS_PATH}/${line}.png
         echo -1 > ${subjectBase}${STATUS_FILENAME}
         logFile=${BASE_DIRECTORY}${LOG_PATH}/${line}.log
         logErrFile=${BASE_DIRECTORY}${LOG_PATH}/${line}.err.log
-        #qsub -V -cwd -o /ifshome/jwong/Documents/qsubTesting/test.log -e /ifshome/jwong/Documents/qsubTesting/test.err.log wrapper.sh 3
-        #echo "AAA" > ${BASE_DIRECTORY}${LOG_PATH}/${line}.log
-        #./cseWrapper.sh ${subjectBase}
-        qsub cseQsubWrapper.sh ${subjectBase}
+        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectBase}
     fi
 done
 
@@ -55,6 +53,4 @@ done
 python ./py/genStatusFile.py $1
 
 exit 0
-
-#qsub -V -cwd -o /ifshome/jwong/Documents/qsubTesting/test.log -e /ifshome/jwong/Documents/qsubTesting/test.err.log wrapper.sh 3
 
