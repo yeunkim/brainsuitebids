@@ -6,9 +6,9 @@ Performs all initial checks required before allowing run.sh to begin spawning pr
 This includes verifying that:
     Nipype is installed correctly
     BrainSuite is installed correctly
-    All folders in subjects file exist
-    All folders in subjects file contain subjectName.nii.gz data
-
+    Specified directory adheres to essentials of BIDS structure
+        Must contain all subject folders specified in participants.tsv
+            Each subject folder contains anat/sub-<num>_T1w.nii.gz file
 
 returns:
     0 on success
@@ -16,13 +16,7 @@ returns:
 
 
 Usage:
-python checks.py subjectsFile
-
-subjectsFile expected format:
-    Path to Data directory
-    Subject_dir_1
-    ...
-    Subject_dir_n
+python checks.py participants_tsv_file
 
 """
 
@@ -63,11 +57,12 @@ def verifyBrainsuiteInstalled():
 
 def createSubjectDirectory(base, subject):
     """Returns base/subject"""
-    return base + os.sep + subject
+    return base + os.sep + subject + os.sep + "anat"
 
 def createSubjectDataPath(base, subject):
     """Returns base/subject/subject.nii.gz"""
-    return base + os.sep + subject + os.sep + subject + ".nii.gz"
+
+    return createSubjectDirectory(base, subject) + os.sep + subject + "_T1w.nii.gz"
 
 
 def parseInput():
@@ -95,30 +90,41 @@ Expected format of subjectsFile:
         parser.error("Expected 1 argument, got %s" % len(args))
         return False
 
-    structureFile = None
+    participantsFile = None
     try:
-        structureFile = open(args[0], "r")
+        participantsFile = open(args[0], "r")
     except FileNotFoundError:
         print("Error: the file: %s is not found" % args[0])
         return False
 
-    baseDirectory = ""
+    baseDirectory = os.path.dirname(args[0])
     subjectDirectories = []
 
     firstTime = True
-    for line in structureFile:
+    subjectNameIndex = -1
+    rowLength = -1
+    lineCount = 0
+    for line in participantsFile:
+        lineCount = lineCount + 1
         line = line.strip()
         if line != "":
             if firstTime:
-                if not os.path.isdir(line):
-                    print("Error: the following path is not an existing directory: %s" % line)
+                header = line.split()
+                if header.count("participant_id") != 1:
+                    print("Error in participants.tsv file. Header row must contain a participant_id column")
                     return False
-
-                baseDirectory = line
+                
+                subjectNameIndex = line.split().index("participant_id")
+                rowLength = len(header)
                 firstTime = False
             else:
-                checkDirectory = createSubjectDirectory(baseDirectory, line)
-                checkFile = createSubjectDataPath(baseDirectory, line)
+                currentRow = line.split()
+                if len(currentRow) != rowLength:
+                    print("Column formatting error in participant.tsv file, in line %d." % lineCount)
+                    return False
+                currentSubjID = currentRow[subjectNameIndex]
+                checkDirectory = createSubjectDirectory(baseDirectory, currentSubjID)
+                checkFile = createSubjectDataPath(baseDirectory, currentSubjID)
                 if not os.path.isdir(checkDirectory):
                     print("Error: the following path is not an existing directory: %s" % checkDirectory)
                     return False
@@ -126,13 +132,13 @@ Expected format of subjectsFile:
                     print("Error while validating file structure: following file does not exist: %s " % checkFile)
                     return False
 
-                subjectDirectories.append(line)
+                subjectDirectories.append(currentSubjID)
 
     if(not firstTime and len(subjectDirectories) != 0):
-        print("Successfully validated structure of data folder using file: %s" % args[0])
+        print("Successfully validated structure of dataset")
         return True
     else:
-        print("Data structure file is empty or does not list any folders")
+        print("participants.tsv file is empty or does not list any participants")
         return False
 
 
@@ -142,6 +148,5 @@ if __name__ == "__main__":
 
     if not parseInput():
         exit(1)
-
 
     exit(0)

@@ -1,56 +1,93 @@
 #! /bin/sh
 
-USAGE_MESSAGE="Usage: `basename $0` DataStructureFile\n\n\
-Expected format of DataStructureFile:\n\
-Path to Data directory (absolute path, no trailing slash)\n\
-\tSubject_dir_1 (No trailing or leading slash)\n\
-\t...\n\
-\tSubject_dir_n"
+USAGE_MESSAGE="Usage: `basename $0` dataset\n\tdataset must be the path to a BIDS formatted dataset.\n"
+
+echo
+echo "BrainSuite QC System"
+echo
 
 if [ "$#" -ne 1 ]
 then
-    echo ${USAGE_MESSAGE}
-    echo "Error. Expected exactly 1 command line argument, got $#"
+    echo -e ${USAGE_MESSAGE}
+    echo "Error: Expected exactly 1 command line argument, got $#"
     echo "Exiting with error code 1"
     exit 1
 fi
 
-python ./py/checks.py $1
+if [ ! -d $1 ]
+then
+    echo -e ${USAGE_MESSAGE}
+    echo "Error: $1 is not a directory."
+    echo "Exiting with error code 1"
+    exit 1
+fi
+
+PARTICIPANTS_FILE=$1/participants.tsv
+DERIVATIVES_DIR=$1/Derivatives
+THUMBNAILS_PATH="/thumbnails"
+STATUS_FILENAME="/status.txt"
+LOG_PATH="/logging"
+BASE_DIRECTORY=""
+PNG_OPTIONS="--view 3 --slice 60"
+
+if [ ! -e $PARTICIPANTS_FILE ]
+then
+    echo -e ${USAGE_MESSAGE}
+    echo "Error: $1/participants.tsv does not exist."
+    echo "Exiting with error code 1"
+    exit 1
+fi
+
+
+python ./py/checks.py $PARTICIPANTS_FILE
 if [ $? -ne 0 ]
 then
     echo "Error. Checks.py failure."
     echo "Exiting with error code 2"
     exit 2
 fi
-#If checks.py passed, we know input file is well formatted, and is not empty
+#If checks.py passed, we know BIDS dataset is well formatted
 
-
-THUMBNAILS_PATH="/thumbnails"
-STATUS_FILENAME="/status.txt"
-LOG_PATH="/logging"
-BASE_DIRECTORY=""
-PNG_OPTIONS="--view 3 --slice 60"
-for line in `grep -v "^[[:space:]]*$" $1`
+readingHeader=1
+participantIndex=-1
+OLD_IFS=$IFS
+IFS=$'\n'
+for line in `grep -v "^[[:space:]]*$" $PARTICIPANTS_FILE`
 do
-    if [ -z ${BASE_DIRECTORY} ]
+    if [ ${readingHeader} -eq 1 ]
     then
-        BASE_DIRECTORY=${line}
-        mkdir -p ${BASE_DIRECTORY}${LOG_PATH}
+        mkdir -p ${1}${LOG_PATH}
+        IFS=$'\t ' read -r -a header <<< ${line}
+        for i in "${!header[@]}"
+        do
+            if [ ${header[$i]} = "participant_id" ]
+            then
+                participantIndex=$i
+            fi
+        done
+
+        readingHeader=0
     else
-        subjectBase=${BASE_DIRECTORY}/${line}
-        #echo ${subjectBase}${THUMBNAILS_PATH}/${line}.png
-        mkdir -p ${subjectBase}${THUMBNAILS_PATH}
-        volblend $PNG_OPTIONS -i ${subjectBase}/${line}.nii.gz -o ${subjectBase}${THUMBNAILS_PATH}/${line}.png
-        echo -1 > ${subjectBase}${STATUS_FILENAME}
-        logFile=${BASE_DIRECTORY}${LOG_PATH}/${line}.log
-        logErrFile=${BASE_DIRECTORY}${LOG_PATH}/${line}.err.log
-        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectBase}
+        IFS=$'\t ' read -r -a row <<< ${line}
+        subjID=${row[$participantIndex]}
+        subjectDataFile=${1}/${subjID}/anat/${subjID}_T1w.nii.gz
+        subjectDerivativeBase=${DERIVATIVES_DIR}/${subjID}
+        mkdir -p ${subjectDerivativeBase}
+        mkdir -p ${subjectDerivativeBase}${THUMBNAILS_PATH}
+        echo ${PNG_OPTIONS}
+        echo ${subjectDataFile}
+        echo ${subjectDerivativeBase}${THUMBNAILS_PATH}/${subjID}.png
+        IFS=$OLD_IFS volblend --view 3 --slice 60 -i ds001//1003/anat/1003_T1w.nii.gz -o ds001//Derivatives/1003/thumbnails/1003.png
+        echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
+        logFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.log
+        logErrFile=${1}${LOG_PATH}/${subjID}.err.log
+        #qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectBase}
     fi
 done
 
 
 
-python ./py/genStatusFile.py $1
+#python ./py/genStatusFile.py $1
 
 exit 0
 
