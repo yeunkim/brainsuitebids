@@ -89,8 +89,8 @@ DataStructureFile expected format:
     structureFile = None
     try:
         structureFile = open(args[0], "r")
-    except FileNotFoundError:
-        print("Error: the file: %s is not found" % args[0])
+    except:
+        print("Error accessing file %s: %s" % (args[0], sys.exc_info()[0]))
         return False
 
 
