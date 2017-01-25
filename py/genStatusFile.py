@@ -4,6 +4,7 @@ genStatusFile.py
 
 Parses subjectsFile, then scans all status.txt files indicated by subjectsFile
 Generates json file based on status of each subject
+Saves json file into Derivatives/brainsuite_state.json
 Continuously loops until all subjects have completed. See global DONE_STATE variable
 
 returns:
@@ -12,13 +13,7 @@ returns:
 
 
 Usage:
-python genStatusFile.py subjectsFile
-
-subjectsFile expected format:
-    Path to Data directory
-    Subject_dir_1
-    ...
-    Subject_dir_n
+python genStatusFile.py participants_tsv_file
 
 """
 
@@ -46,14 +41,6 @@ DONE_STATE = "11"
 START_TIME = None
 START_TIME_STRING = ""
 
-def createSubjectDirectory(base, subject):
-    """Returns base/subject"""
-    return base + os.sep + subject
-
-def createSubjectDataPath(base, subject):
-    """Returns base/subject/subject.nii.gz"""
-    return base + os.sep + subject + os.sep + subject + ".nii.gz"
-
 def createStatusPath(subject):
     return WORKFLOW_BASE_DIRECTORY + os.sep + subject + os.sep + STATUS_NAME
 
@@ -72,12 +59,7 @@ def parseInput():
 
     version_msg = "%prog 1.0"
     usage_msg = """
-%prog DataStructureFile
-DataStructureFile expected format:
-    Path to Data directory
-    Subject_dir_1
-    ...
-    Subject_dir_n
+%prog participants_tsv_file
 """
 
     parser = OptionParser(version=version_msg, usage=usage_msg)
@@ -86,29 +68,27 @@ DataStructureFile expected format:
         parser.error("Expected 1 argument, got %s" % len(args))
         return False
 
-    structureFile = None
+    participantsFile = None
     try:
-        structureFile = open(args[0], "r")
+        participantsFile = open(args[0], "r")
     except:
         print("Error accessing file %s: %s" % (args[0], sys.exc_info()[0]))
         return False
 
+    global WORKFLOW_BASE_DIRECTORY
+    WORKFLOW_BASE_DIRECTORY = os.path.dirname(args[0]) + os.sep + "Derivatives"
 
     firstTime = True
+    subjectNameIndex = -1;
     global SUBJECTS
-    for line in structureFile:
+    for line in participantsFile:
         line = line.strip()
         if line != "":
             if firstTime:
-                if not os.path.isdir(line):
-                    print("Error: the following path is not an existing directory: %s" % line)
-                    return False
-                global WORKFLOW_BASE_DIRECTORY
-                WORKFLOW_BASE_DIRECTORY = line
+                subjectNameIndex = line.split().index("participant_id")
                 firstTime = False
             else:
-                SUBJECTS.append(line)
-
+                SUBJECTS.append(line.split()[subjectNameIndex])
 
 def generateJSON(processingComplete):
     global START_TIME

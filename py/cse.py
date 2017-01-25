@@ -10,11 +10,11 @@ Returns:
     1 on failure
 
 Usage:
-python cse.py DataBaseDirectory
+python cse.py T1wFile DerivativeBase
 
-DataBaseDirectory represents base directory of a subject; should directly contain subjects .nii.gz data
-Example: %prog ~/Documents/webapp/Data/1000
-Expects no trailing slash
+T1wFile is the T1 weighted MRI file for the subject
+DerivativeBase is this subject's base directory under the Derivatives directory
+Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/Derivatives/1003
 """
 
 
@@ -48,31 +48,38 @@ BRAINSUITE_ATLAS_DIRECTORY = ""
 WORKFLOW_BASE_DIRECTORY = ""
 SUBJECT_ID = ""
 WORKFLOW_NAME = ""
-WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name. Ex: 1000_nipype
+WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name.
 INPUT_MRI_FILE = ""
 STATUS_FILEPATH = ""
 
 CURRENT_STATUS = 0
-STATUS_NAME = "status.txt"
+STATUSFILE = "status.txt"
 RUNTIME_EXCEPTION_CODE = -5 #Update statusFile with this code to indicate runtime error during Nipype processing
 
 WORKFLOW_SUCCESS = 0
 
-"""
-def updateStatusFile(placeholder):
-    Updates file located at STATUS_FILEPATH. This global variable is to be updated in initialization function
-    :param placeholder: Placeholder parameter
-    :return: Unneeded return value
-    global CURRENT_STATUS
-    f = open(STATUS_FILEPATH, "w")
-    f.write("%d" % CURRENT_STATUS)
-    f.close()
-    CURRENT_STATUS = CURRENT_STATUS + 1
-    return 0
-
-"""
-
 def updateStatusFile(connectFile, secondaryFile, statusPath, status):
+    """
+    To be used as a Nipype function interface
+    :param connectFile: Should be from an in node to this function call. Ie, should come from the step that we are reporting completion on
+    :param secondaryFile: Additional file needed for png rendering calls
+    :param statusPath: Path of status file to update
+    :param status: Int to be written to file statusPath. Also indicates what stage just finished.
+                   Mapping as follows:
+                   bse          1
+                   bfc          2
+                   pvc          3
+                   cerebro      4
+                   cortex       5
+                   scrubmask    6
+                   tca          7
+                   dewisp       8
+                   dfs          9
+                   pialmesh     10 
+                   hemisplit    11
+    :return: void
+    """
+
     #Checking brainsuite executable path
     from distutils.spawn import find_executable
     import os
@@ -83,41 +90,35 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status):
 
     THUMBNAILS_PATH = os.path.dirname(statusPath) + "/thumbnails/"
 
-    subjectFile = os.path.basename(connectFile)
-    subject_id = subjectFile[:subjectFile.index(".")]
-    outFile = THUMBNAILS_PATH + subject_id + STEP_PNG_SUFFIX[status]
+    subject_id = os.path.basename(os.path.dirname(statusPath))
+    outputPNGFile = THUMBNAILS_PATH + subject_id + STEP_PNG_SUFFIX[status]
 
+    PNG_OPTIONS = "--view 3 --slice 60"
     DFS_RENDER_OPTIONS = "--zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512"
 
     command = ""
     if status <= 8:
-        command = ""
-        PNG_OPTIONS = "--view 3 --slice 60"
         if status == 1:
             #bse
-            command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, connectFile, secondaryFile, outFile))
+            command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, connectFile, secondaryFile, outputPNGFile))
         elif status == 2:
             #bfc
-            command = ("volblend %s -i %s -o %s" % (PNG_OPTIONS, connectFile, outFile))
+            command = ("volblend %s -i %s -o %s" % (PNG_OPTIONS, connectFile, outputPNGFile))
         elif status == 3:
             #pvc
-
             #NOTE: Change this code when label description xml file changes
             LABEL_DESCRIPTION_FILE = find_executable('bse')[:-3] + '../labeldesc/brainsuite_labeldescriptions_14May2014.xml'
-            command = ("volblend %s -i %s -l %s -o %s -x %s" % (PNG_OPTIONS, secondaryFile, connectFile, outFile, LABEL_DESCRIPTION_FILE))
+            command = ("volblend %s -i %s -l %s -o %s -x %s" % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile, LABEL_DESCRIPTION_FILE))
         else:
-            command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, secondaryFile, connectFile, outFile))
-
-
-
-
+            command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile))
     else:
         #From Pialmesh(step 9) onwards, we are dealing with dfs. Must use dfsrender
-        command = ("dfsrender08b_x86_64-redhat-linux-gnu -i %s -o %s %s" % (connectFile, outFile, DFS_RENDER_OPTIONS))
-
+        command = ("dfsrender08b_x86_64-redhat-linux-gnu -i %s -o %s %s" % (connectFile, outputPNGFile, DFS_RENDER_OPTIONS))
+    
+    #TODO: Error check. What behavior if png render failure?
     renderReturnValue = os.system(command)
 
-    print("Saving thumbnail at: %s" % outFile)
+    print("Saving thumbnail at: %s" % outputPNGFile)
 
     f = open(statusPath, "w")
     f.write("%d" % status)
@@ -129,37 +130,42 @@ def init():
     Reads in argument, sets globals to be used in workflow processing
     :return:
     """
+    global INPUT_MRI_FILE
     global BRAINSUITE_ATLAS_DIRECTORY
     global WORKFLOW_BASE_DIRECTORY
     global SUBJECT_ID
     global WORKFLOW_NAME
-    global INPUT_MRI_FILE
     global STATUS_FILEPATH
 
     BRAINSUITE_ATLAS_DIRECTORY = find_executable('bse')[:-3] + '../atlas/'
 
     version_msg = "%prog 1.0"
     usage_msg = """
-    %prog DataBaseDirectory
-    DataBaseDirectory represents base directory of a subject; should directly contain subjects .nii.gz data
-    Example: %prog ~/Documents/webapp/Data/1000
-    Expects no trailing slash
+    %prog T1wFile DerivativeBase
+
+    T1wFile is the T1 weighted MRI file for the subject
+    DerivativeBase is this subject's base directory under the Derivatives directory
+    Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/Derivatives/1003
+    Expecets no trailing slash
     """
+
 
     parser = OptionParser(version=version_msg, usage=usage_msg)
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) != 1:
-        parser.error("Expected 1 argument, got %s" % len(args))
+    if len(args) != 2:
+        parser.error("Expected 2 arguments, got %s" % len(args))
         return False
+    
 
-    WORKFLOW_BASE_DIRECTORY = os.path.abspath(args[0])
     #TODO: Add auto parsing of a brainsuite settings file, if file exists (this is a possible nice feature)
-
+    
+    INPUT_MRI_FILE = os.path.abspath(args[0])
+    WORKFLOW_BASE_DIRECTORY = os.path.abspath(args[1])
+    
     SUBJECT_ID = os.path.basename(os.path.normpath(WORKFLOW_BASE_DIRECTORY))
     WORKFLOW_NAME = SUBJECT_ID + WORKFLOW_SUFFIX
 
-    INPUT_MRI_FILE = WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + ".nii.gz"
-    STATUS_FILEPATH = WORKFLOW_BASE_DIRECTORY + os.sep + STATUS_NAME
+    STATUS_FILEPATH = WORKFLOW_BASE_DIRECTORY + os.sep + STATUSFILE
 
 def runWorkflow():
     """
@@ -177,13 +183,9 @@ def runWorkflow():
 
 
     bseObj = pe.Node(interface=bs.Bse(), name='BSE')
-    bseObj.inputs.inputMRIFile = INPUT_MRI_FILE
     bfcObj = pe.Node(interface=bs.Bfc(),name='BFC')
     pvcObj = pe.Node(interface=bs.Pvc(), name = 'PVC')
     cerebroObj = pe.Node(interface=bs.Cerebro(), name='CEREBRO')
-    #Provided atlas files
-    cerebroObj.inputs.inputAtlasMRIFile =(BRAINSUITE_ATLAS_DIRECTORY + ATLAS_MRI_SUFFIX)
-    cerebroObj.inputs.inputAtlasLabelFile = (BRAINSUITE_ATLAS_DIRECTORY + ATLAS_LABEL_SUFFIX)
     cortexObj = pe.Node(interface=bs.Cortex(), name='CORTEX')
     scrubmaskObj = pe.Node(interface=bs.Scrubmask(), name='SCRUBMASK')
     tcaObj = pe.Node(interface=bs.Tca(), name='TCA')
@@ -192,6 +194,13 @@ def runWorkflow():
     pialmeshObj=pe.Node(interface=bs.Pialmesh(),name='PIALMESH')
     hemisplitObj=pe.Node(interface=bs.Hemisplit(),name='HEMISPLIT')
 
+
+    #Provided input file 
+    bseObj.inputs.inputMRIFile = INPUT_MRI_FILE
+    #Provided atlas files
+    cerebroObj.inputs.inputAtlasMRIFile =(BRAINSUITE_ATLAS_DIRECTORY + ATLAS_MRI_SUFFIX)
+    cerebroObj.inputs.inputAtlasLabelFile = (BRAINSUITE_ATLAS_DIRECTORY + ATLAS_LABEL_SUFFIX)
+   
 
     #Changes from default settings
     bseObj.inputs.diffusionConstant = 15 #-d
@@ -205,7 +214,6 @@ def runWorkflow():
 
     #Not changing DFS
     #Not changing pialmesh
-
     #End changes from default
 
 
@@ -261,10 +269,7 @@ def runWorkflow():
 
 
 
-    #brainsuite_workflow.add_nodes([bseObj, bfcObj, pvcObj, cerebroObj, cortexObj, scrubmaskObj, tcaObj, dewispObj, dfsObj, pialmeshObj, hemisplitObj])
-
     brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bfcObj, 'inputMRIFile')
-    #brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bseDoneWrapper, 'connectFile')
     bseDoneWrapper.inputs.connectFile = INPUT_MRI_FILE
     brainsuite_workflow.connect(bseObj, 'outputMaskFile', bseDoneWrapper, 'secondaryFile')
 
@@ -317,12 +322,10 @@ def runWorkflow():
     brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
 
     #Print message when all processing is complete.
-    print('Processing has completed.')
+    print('Processing for subject %s has completed. Nipype workflow is located at: %s' % (SUBJECT_ID, WORKFLOW_BASE_DIRECTORY))
 
     global WORKFLOW_SUCCESS
     WORKFLOW_SUCCESS = 1
-
-
 
 
 if __name__ == "__main__":

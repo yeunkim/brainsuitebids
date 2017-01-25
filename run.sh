@@ -68,25 +68,22 @@ do
 
         readingHeader=0
     else
-        IFS=$'\t ' read -r -a row <<< ${line}
+        IFS=$'\t '
+        read -r -a row <<< ${line}
         subjID=${row[$participantIndex]}
         subjectDataFile=${1}/${subjID}/anat/${subjID}_T1w.nii.gz
         subjectDerivativeBase=${DERIVATIVES_DIR}/${subjID}
         mkdir -p ${subjectDerivativeBase}
         mkdir -p ${subjectDerivativeBase}${THUMBNAILS_PATH}
-        echo ${PNG_OPTIONS}
-        echo ${subjectDataFile}
-        echo ${subjectDerivativeBase}${THUMBNAILS_PATH}/${subjID}.png
-        IFS=$OLD_IFS volblend --view 3 --slice 60 -i ds001//1003/anat/1003_T1w.nii.gz -o ds001//Derivatives/1003/thumbnails/1003.png
+        volblend ${PNG_OPTIONS} -i ${subjectDataFile} -o ${subjectDerivativeBase}${THUMBNAILS_PATH}/${subjID}.png
         echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
         logFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.log
-        logErrFile=${1}${LOG_PATH}/${subjID}.err.log
-        #qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectBase}
+        logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.err.log
+        #qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectBase} ${subjectDerivativeBase}
     fi
 done
 
-
-
+IFS=$OLD_IFS
 #python ./py/genStatusFile.py $1
 
 exit 0
