@@ -55,7 +55,7 @@ else
         echo "Exiting with error code 1"
         exit 1
     fi
-
+    
     echo "Will be using existing directory $2"
 fi
 
@@ -94,7 +94,7 @@ for line in `grep -v "^[[:space:]]*$" $PARTICIPANTS_FILE`
 do
     if [ ${readingHeader} -eq 1 ]
     then
-        mkdir -p ${1}${LOG_PATH}
+        mkdir -p ${DERIVATIVES_DIR}${LOG_PATH}
         IFS=$'\t ' read -r -a header <<< ${line}
         for i in "${!header[@]}"
         do
@@ -112,17 +112,18 @@ do
         subjectDataFile=${1}/${subjID}/anat/${subjID}_T1w.nii.gz
         subjectDerivativeBase=${DERIVATIVES_DIR}/${subjID}
         mkdir -p ${subjectDerivativeBase}
-        mkdir -p ${subjectDerivativeBase}${THUMBNAILS_PATH}
-        volblend ${PNG_OPTIONS} -i ${subjectDataFile} -o ${subjectDerivativeBase}${THUMBNAILS_PATH}/${subjID}.png
+        mkdir -p $2/${THUMBNAILS_PATH}
+        volblend ${PNG_OPTIONS} -i ${subjectDataFile} -o $2/${THUMBNAILS_PATH}/${subjID}.png
         echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
         logFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.log
         logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.err.log
-        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectBase} ${subjectDerivativeBase} $2
+        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectDataFile} ${subjectDerivativeBase} $2
     fi
 done
 
 IFS=$OLD_IFS
-python ./py/genStatusFile.py $1 $2
+cp index.html $2
+python ./py/genStatusFile.py $PARTICIPANTS_FILE $2
 
 exit 0
 

@@ -123,12 +123,14 @@
 
         var selectedSubjectIndex = 0;
         var ajaxLock = false;
-        var THUMBNAILS_PATH;
+        var THUMBNAILS_ABSPATH;
+        var THUMBNAILS_RELATIVEPATH;
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
 
         function initPaths(){
-            BASE_URL = document.URL.toString().substring(0, baseURL.lastIndexOf("/") + 1);
+            var docURL = document.URL.toString();
+            BASE_URL = docURL.substring(0, docURL.lastIndexOf("/"));
             JSON_PATH = BASE_URL + JSON_PATH;
         }
 
@@ -144,7 +146,8 @@
                         var statusString = "Initializing data from file: " + JSON_PATH;
                         if (json.subjects) {
                             setStatus(statusString);
-                            THUMBNAILS_PATH = BASE_URL + json.path_to_thumbnails;
+                            THUMBNAILS_ABSPATH = json.thumbnails_abspath;
+                            THUMBNAILS_RELATIVEPATH = BASE_URL + json.thumbnails_relativepath;
                             //Init arrays
                             for(var i = 0 ; i < Object(json.subjects).length; i++){
                                 subjects.push(json.subjects[i].name);
@@ -219,7 +222,7 @@
 
             statusString += "</p>";
             for (var i = 0; i <= subjectState; i++) {
-                statusString += "<img src='" + makeURL(subjectIndex, i) + "' title='" + SHORT_NAMES[i] + "' width=" + (100 * 1 / PROCESS_NAMES.length) + "%>";
+                statusString += "<img src='" + makeThumbnailURL(subjectIndex, i) + "' title='" + SHORT_NAMES[i] + "' width=" + (100 * 1 / PROCESS_NAMES.length) + "%>";
             }
             $("#tray").html(statusString);
         }
@@ -244,14 +247,14 @@
         }
 
 
-        function makeURL(subjectIndex, state) {
+        function makeThumbnailURL(subjectIndex, state) {
             if (state < 0){
                 state = 0;
             }
             if (!STEP_NAMES[state]){
                 return null;
             }
-            return BASE_URL + subjects[subjectIndex] + "/" + subjects[subjectIndex] + STEP_NAMES[state];
+            return THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + STEP_NAMES[state];
         }
 
 
@@ -291,7 +294,7 @@
                     }
                     
                     var stateToShow = Math.min(newState, maxState);
-                    var url = makeURL(subjectIndex, stateToShow);;
+                    var url = makeThumbnailURL(subjectIndex, stateToShow);;
                     if (!url){
                         continue;
                     }

@@ -49,8 +49,9 @@ def createStatusPath(subject):
     return WORKFLOW_BASE_DIRECTORY + os.sep + subject + os.sep + STATUS_NAME
 
 def createBrainSuiteStatePath():
-    return WORKFLOW_BASE_DIRECTORY + os.sep + "brainsuite_state.json"
-
+    return PUBLIC + os.sep + "brainsuite_state.json"
+def createThumbnailsPath():
+    return PUBLIC + os.sep + PATH_TO_THUMBNAILS
 
 def parseInput():
     """#Parses arguments, tries to read file passed in
@@ -80,10 +81,13 @@ def parseInput():
         return False
 
     global WORKFLOW_BASE_DIRECTORY
+    global PUBLIC
+    WORKFLOW_BASE_DIRECTORY = os.path.dirname(args[0]) + os.sep + "Derivatives"
     if len(args) == 1:
-        WORKFLOW_BASE_DIRECTORY = os.path.dirname(args[0]) + os.sep + "Derivatives"
+        PUBLIC = WORKFLOW_BASE_DIRECTORY
     else:
-        WORKFLOW_BASE_DIRECTORY = args[1]
+        PUBLIC = os.path.abspath(args[1])
+
 
     firstTime = True
     subjectNameIndex = -1;
@@ -96,6 +100,8 @@ def parseInput():
                 firstTime = False
             else:
                 SUBJECTS.append(line.split()[subjectNameIndex])
+
+    return True
 
 def generateJSON(processingComplete):
     global START_TIME
@@ -113,7 +119,8 @@ def generateJSON(processingComplete):
     
     j['start_time'] = START_TIME_STRING
     j['runtime'] = str(datetime.now() - START_TIME).rsplit(".", 1)[0]
-    j['path_to_thumbnails'] = PATH_TO_THUMBNAILS
+    j['thumbnails_abspath'] = createThumbnailsPath()
+    j['thumbnails_relativepath'] = PATH_TO_THUMBNAILS
 
     subjectsJSONArray = []
     seenNotDone = False
@@ -139,7 +146,9 @@ def generateJSON(processingComplete):
 
 if __name__ == "__main__":
 
-    parseInput()
+    if not parseInput():
+        print("Error parsing inputs")
+        exit(1)
     
     print("Creating file %s" % createBrainSuiteStatePath())
     print("Continuously looping, and updating this status file until all processing is complete.")
