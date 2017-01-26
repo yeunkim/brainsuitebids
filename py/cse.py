@@ -10,10 +10,14 @@ Returns:
     1 on failure
 
 Usage:
-python cse.py T1wFile DerivativeBase
+python cse.py T1wFile DerivativeBase [public_html]
 
 T1wFile is the T1 weighted MRI file for the subject
 DerivativeBase is this subject's base directory under the Derivatives directory
+
+Optional:
+public_html is the base directory where we may save thumbnails, statistics
+    If no public_html argument is passed, program will default to saving file in Derivatives/subjectNum
 Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/Derivatives/1003
 """
 
@@ -51,6 +55,8 @@ WORKFLOW_NAME = ""
 WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name.
 INPUT_MRI_FILE = ""
 STATUS_FILEPATH = ""
+PUBLIC = ""
+
 
 CURRENT_STATUS = 0
 STATUSFILE = "status.txt"
@@ -58,7 +64,7 @@ RUNTIME_EXCEPTION_CODE = -5 #Update statusFile with this code to indicate runtim
 
 WORKFLOW_SUCCESS = 0
 
-def updateStatusFile(connectFile, secondaryFile, statusPath, status):
+def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
     """
     To be used as a Nipype function interface
     :param connectFile: Should be from an in node to this function call. Ie, should come from the step that we are reporting completion on
@@ -77,6 +83,7 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status):
                    dfs          9
                    pialmesh     10 
                    hemisplit    11
+    :param public: directory where we may save thumbnails and statistics
     :return: void
     """
 
@@ -88,7 +95,7 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status):
                        ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
                        ".pial.cortex.png", ".left.png"]
 
-    THUMBNAILS_PATH = os.path.dirname(statusPath) + "/thumbnails/"
+    THUMBNAILS_PATH = public + "/thumbnails/"
 
     subject_id = os.path.basename(os.path.dirname(statusPath))
     outputPNGFile = THUMBNAILS_PATH + subject_id + STEP_PNG_SUFFIX[status]
@@ -136,7 +143,7 @@ def init():
     global SUBJECT_ID
     global WORKFLOW_NAME
     global STATUS_FILEPATH
-
+    global PUBLIC
     BRAINSUITE_ATLAS_DIRECTORY = find_executable('bse')[:-3] + '../atlas/'
 
     version_msg = "%prog 1.0"
@@ -152,8 +159,8 @@ def init():
 
     parser = OptionParser(version=version_msg, usage=usage_msg)
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) != 2:
-        parser.error("Expected 2 arguments, got %s" % len(args))
+    if len(args) != 3 and len(args) != 2:
+        parser.error("Expected 2 or 3 arguments, got %s" % len(args))
         return False
     
 
@@ -161,7 +168,11 @@ def init():
     
     INPUT_MRI_FILE = os.path.abspath(args[0])
     WORKFLOW_BASE_DIRECTORY = os.path.abspath(args[1])
-    
+    if len(args) == 3:
+        PUBLIC = os.path.abspath(args[2])
+    else:
+        PUBLIC = WORKFLOW_BASE_DIRECTORY
+
     SUBJECT_ID = os.path.basename(os.path.normpath(WORKFLOW_BASE_DIRECTORY))
     WORKFLOW_NAME = SUBJECT_ID + WORKFLOW_SUFFIX
 
@@ -218,27 +229,27 @@ def runWorkflow():
 
 
     bseDoneWrapper = pe.Node(name="BSE_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     bfcDoneWrapper = pe.Node(name="BFC_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     pvcDoneWrapper = pe.Node(name="PVC_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     cerebroDoneWrapper = pe.Node(name="CEREBRO_DONE_WRAPPER",
-                                 interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                                 interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     cortexDoneWrapper = pe.Node(name="CORTEX_DONE_WRAPPER",
-                                interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                                interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     scrubmaskDoneWrapper = pe.Node(name="SCRUBMASK_DONE_WRAPPER",
-                                   interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                                   interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     tcaDoneWrapper = pe.Node(name="TCA_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     dewispDoneWrapper = pe.Node(name="DEWISP_DONE_WRAPPER",
-                                interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                                interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     dfsDoneWrapper = pe.Node(name="DFS_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     pialmeshDoneWrapper = pe.Node(name="PIALMESH_DONE_WRAPPER",
-                                 interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                                 interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     hemisplitDoneWrapper = pe.Node(name="HEMISPLIT_DONE_WRAPPER",
-                                   interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status"], output_names=[],function=updateStatusFile))
+                                   interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     
 
     bseDoneWrapper.inputs.statusPath = STATUS_FILEPATH
@@ -254,6 +265,18 @@ def runWorkflow():
     hemisplitDoneWrapper.inputs.statusPath = STATUS_FILEPATH
     
 
+    bseDoneWrapper.inputs.public = PUBLIC
+    bfcDoneWrapper.inputs.public = PUBLIC
+    pvcDoneWrapper.inputs.public = PUBLIC
+    cerebroDoneWrapper.inputs.public = PUBLIC
+    cortexDoneWrapper.inputs.public = PUBLIC
+    scrubmaskDoneWrapper.inputs.public = PUBLIC
+    tcaDoneWrapper.inputs.public = PUBLIC
+    dewispDoneWrapper.inputs.public = PUBLIC
+    dfsDoneWrapper.inputs.public = PUBLIC
+    pialmeshDoneWrapper.inputs.public = PUBLIC
+    hemisplitDoneWrapper.inputs.public = PUBLIC
+    
     bseDoneWrapper.inputs.status = 1
     bfcDoneWrapper.inputs.status = 2
     pvcDoneWrapper.inputs.status = 3
@@ -266,7 +289,7 @@ def runWorkflow():
     pialmeshDoneWrapper.inputs.status = 10
     hemisplitDoneWrapper.inputs.status = 11
     
-
+    
 
 
     brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bfcObj, 'inputMRIFile')

@@ -13,7 +13,11 @@ returns:
 
 
 Usage:
-python genStatusFile.py participants_tsv_file
+python genStatusFile.py participants_tsv_file public_html
+
+optional:
+public_html, the path to save brainsuite_state.json
+    If omitted, will default to saving file at participants_tsv_file/../Derivatives/brainsuite_state.json
 
 """
 
@@ -64,8 +68,8 @@ def parseInput():
 
     parser = OptionParser(version=version_msg, usage=usage_msg)
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) != 1:
-        parser.error("Expected 1 argument, got %s" % len(args))
+    if len(args) != 1 and len(args) != 2:
+        parser.error("Expected 1 or 2 arguments, got %s" % len(args))
         return False
 
     participantsFile = None
@@ -76,7 +80,10 @@ def parseInput():
         return False
 
     global WORKFLOW_BASE_DIRECTORY
-    WORKFLOW_BASE_DIRECTORY = os.path.dirname(args[0]) + os.sep + "Derivatives"
+    if len(args) == 1:
+        WORKFLOW_BASE_DIRECTORY = os.path.dirname(args[0]) + os.sep + "Derivatives"
+    else:
+        WORKFLOW_BASE_DIRECTORY = args[1]
 
     firstTime = True
     subjectNameIndex = -1;

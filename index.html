@@ -100,8 +100,8 @@
 
     <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
     <script type="text/javascript">
-        var JSON_PATH= "/Data/brainsuite_state.json";
-        var DATA_PATH= "/Data/";
+        var BASE_URL = "";
+        var JSON_PATH = "/brainsuite_state.json";
         const PROCESS_NAMES = 
             ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
              "cerebrum masking", "initial cortex masking", "mask scrubbing",
@@ -123,15 +123,13 @@
 
         var selectedSubjectIndex = 0;
         var ajaxLock = false;
-        var pathToThumbnails;
+        var THUMBNAILS_PATH;
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
 
         function initPaths(){
-            var baseURL = document.URL.toString();
-            baseURL = baseURL.substring(0, baseURL.lastIndexOf("/"));
-            JSON_PATH = baseURL + JSON_PATH;
-            DATA_PATH = baseURL + DATA_PATH;
+            BASE_URL = document.URL.toString().substring(0, baseURL.lastIndexOf("/") + 1);
+            JSON_PATH = BASE_URL + JSON_PATH;
         }
 
         function initFromJSON(){
@@ -146,7 +144,7 @@
                         var statusString = "Initializing data from file: " + JSON_PATH;
                         if (json.subjects) {
                             setStatus(statusString);
-                            pathToThumbnails = json.path_to_thumbnails;
+                            THUMBNAILS_PATH = BASE_URL + json.path_to_thumbnails;
                             //Init arrays
                             for(var i = 0 ; i < Object(json.subjects).length; i++){
                                 subjects.push(json.subjects[i].name);
@@ -253,7 +251,7 @@
             if (!STEP_NAMES[state]){
                 return null;
             }
-            return DATA_PATH + subjects[subjectIndex] + pathToThumbnails + subjects[subjectIndex] + STEP_NAMES[state];
+            return BASE_URL + subjects[subjectIndex] + "/" + subjects[subjectIndex] + STEP_NAMES[state];
         }
 
 

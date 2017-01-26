@@ -1,15 +1,15 @@
 #! /bin/sh
 
-USAGE_MESSAGE="Usage: `basename $0` dataset\n\tdataset must be the path to a BIDS formatted dataset.\n"
+USAGE_MESSAGE="Usage: `basename $0` dataset public_html\n\tdataset must be the path to a BIDS formatted dataset.\n\tpublic_html is directory where index.html, thumbnails directory, and brainsuite_state.json will be created. Will create directory if does not already exist\n"
 
 echo
 echo "BrainSuite QC System"
 echo
 
-if [ "$#" -ne 1 ]
+if [ "$#" -ne 2 ]
 then
     echo -e ${USAGE_MESSAGE}
-    echo "Error: Expected exactly 1 command line argument, got $#"
+    echo "Error: Expected exactly 2 command line arguments, got $#"
     echo "Exiting with error code 1"
     exit 1
 fi
@@ -21,6 +21,44 @@ then
     echo "Exiting with error code 1"
     exit 1
 fi
+
+if [ ! -d $2 ]
+then
+    mkdir $2
+    if [ $? -ne 0 ]
+    then
+        echo -e ${USAGE_MESSAGE}
+        echo "Error creating directory $2"
+        echo "Exiting with error code 1"
+        exit 1
+    fi
+
+    echo "Created directory $2"
+else
+    if [ ! -r $2 ]
+    then
+        echo "Error. Lacking read permissions on directory $2"
+        echo "Exiting with error code 1"
+        exit 1
+    fi
+
+    if [ ! -w $2 ]
+    then
+        echo "Error. Lacking write permissions on directory $2"
+        echo "Exiting with error code 1"
+        exit 1
+    fi
+    
+    if [ ! -x $2 ]
+    then
+        echo "Error. Lacking execute permissions on directory $2"
+        echo "Exiting with error code 1"
+        exit 1
+    fi
+
+    echo "Will be using existing directory $2"
+fi
+
 
 PARTICIPANTS_FILE=$1/participants.tsv
 DERIVATIVES_DIR=$1/Derivatives
@@ -79,12 +117,12 @@ do
         echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
         logFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.log
         logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.err.log
-        #qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectBase} ${subjectDerivativeBase}
+        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectBase} ${subjectDerivativeBase} $2
     fi
 done
 
 IFS=$OLD_IFS
-#python ./py/genStatusFile.py $1
+python ./py/genStatusFile.py $1 $2
 
 exit 0
 
