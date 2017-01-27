@@ -14,10 +14,7 @@ returns:
 
 Usage:
 python genStatusFile.py participants_tsv_file public_html
-
-optional:
 public_html, the path to save brainsuite_state.json
-    If omitted, will default to saving file at participants_tsv_file/../Derivatives/brainsuite_state.json
 
 """
 
@@ -50,8 +47,6 @@ def createStatusPath(subject):
 
 def createBrainSuiteStatePath():
     return PUBLIC + os.sep + "brainsuite_state.json"
-def createThumbnailsPath():
-    return PUBLIC + os.sep + PATH_TO_THUMBNAILS
 
 def parseInput():
     """#Parses arguments, tries to read file passed in
@@ -61,7 +56,6 @@ def parseInput():
 
     Return true if all passed
     """
-
     version_msg = "%prog 1.0"
     usage_msg = """
 %prog participants_tsv_file
@@ -69,8 +63,8 @@ def parseInput():
 
     parser = OptionParser(version=version_msg, usage=usage_msg)
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) != 1 and len(args) != 2:
-        parser.error("Expected 1 or 2 arguments, got %s" % len(args))
+    if len(args) != 2:
+        parser.error("Expected exactly 2 arguments, got %s" % len(args))
         return False
 
     participantsFile = None
@@ -83,11 +77,7 @@ def parseInput():
     global WORKFLOW_BASE_DIRECTORY
     global PUBLIC
     WORKFLOW_BASE_DIRECTORY = os.path.dirname(args[0]) + os.sep + "Derivatives"
-    if len(args) == 1:
-        PUBLIC = WORKFLOW_BASE_DIRECTORY
-    else:
-        PUBLIC = os.path.abspath(args[1])
-
+    PUBLIC = os.path.abspath(args[1])
 
     firstTime = True
     subjectNameIndex = -1;
@@ -119,7 +109,8 @@ def generateJSON(processingComplete):
     
     j['start_time'] = START_TIME_STRING
     j['runtime'] = str(datetime.now() - START_TIME).rsplit(".", 1)[0]
-    j['thumbnails_abspath'] = createThumbnailsPath()
+    j['thumbnails_abspath'] = PUBLIC + os.sep + PATH_TO_THUMBNAILS
+    #relativepath is relative to where index.html will be placed
     j['thumbnails_relativepath'] = PATH_TO_THUMBNAILS
 
     subjectsJSONArray = []

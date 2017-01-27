@@ -10,14 +10,11 @@ Returns:
     1 on failure
 
 Usage:
-python cse.py T1wFile DerivativeBase [public_html]
+python cse.py T1wFile DerivativeBase public_html
 
 T1wFile is the T1 weighted MRI file for the subject
 DerivativeBase is this subject's base directory under the Derivatives directory
-
-Optional:
 public_html is the base directory where we may save thumbnails, statistics
-    If no public_html argument is passed, program will default to saving file in Derivatives/subjectNum
 Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/Derivatives/1003
 """
 
@@ -95,10 +92,8 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
                        ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
                        ".pial.cortex.png", ".left.png"]
 
-    THUMBNAILS_PATH = public + "/thumbnails/"
-
     subject_id = os.path.basename(os.path.dirname(statusPath))
-    outputPNGFile = THUMBNAILS_PATH + subject_id + STEP_PNG_SUFFIX[status]
+    outputPNGFile = public + "/thumbnails/" + subject_id + os.sep + subject_id + STEP_PNG_SUFFIX[status]
 
     PNG_OPTIONS = "--view 3 --slice 60"
     DFS_RENDER_OPTIONS = "--zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512"
@@ -159,8 +154,8 @@ def init():
 
     parser = OptionParser(version=version_msg, usage=usage_msg)
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) != 3 and len(args) != 2:
-        parser.error("Expected 2 or 3 arguments, got %s" % len(args))
+    if len(args) != 3:
+        parser.error("Expected exactly 3 arguments, got %s" % len(args))
         return False
     
 
@@ -168,10 +163,7 @@ def init():
     
     INPUT_MRI_FILE = os.path.abspath(args[0])
     WORKFLOW_BASE_DIRECTORY = os.path.abspath(args[1])
-    if len(args) == 3:
-        PUBLIC = os.path.abspath(args[2])
-    else:
-        PUBLIC = WORKFLOW_BASE_DIRECTORY
+    PUBLIC = os.path.abspath(args[2])
 
     SUBJECT_ID = os.path.basename(os.path.normpath(WORKFLOW_BASE_DIRECTORY))
     WORKFLOW_NAME = SUBJECT_ID + WORKFLOW_SUFFIX
