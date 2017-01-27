@@ -1,10 +1,22 @@
 #! /bin/sh
 
 USAGE_MESSAGE=\
-"Usage: `basename $0` dataset public_html
-\n\tdataset must be the path to a BIDS formatted dataset.
-\n\tpublic_html is directory where index.html, thumbnails directory, and brainsuite_state.json will be created.
-\n\tWill create directory if does not already exis
+"\n\n
+Usage: `basename $0` dataset [public]\n
+\tdataset\n
+\t\tmust be the path to a BIDS formatted dataset. participants.tsv is required for this program to work\n
+\tpublic\n
+\t\tdirectory where index.html, thumbnails directory, and brainsuite_state.json will be created.\n
+\t\tProgram will create public directory if it does not already exist\n
+\t\tIf public is unspecified, its value will default to dataset/Derivatives 
+\n
+Additional info:\n
+To view QC system on browser, navigate to public directory in web browser.\n
+(Ideally, public would be a public_html directory, or a directory made public through a webserver)\n
+\n
+All derived data will be placed in the Derivatives directory, as described by BIDS specifications\n
+Each subject's derived folder will contain the nipype_workflow; intermediate data from each step can be found here\n
+
 \n\n
 "
 
