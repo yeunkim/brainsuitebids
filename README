@@ -1,0 +1,39 @@
+BrainSuite QC System
+
+Requirements:
+    BrainSuite <http://brainsuite.org/>
+    Nipype <http://nipype.readthedocs.io/en/0.12.0/>
+    Dataset must be provided in BIDS format. <http://bids.neuroimaging.io/>
+    Must have volblend added to your path
+        /ifs/faculty/shattuck/incoming
+    Must have dfsrender08b_x86_64-redhat-linux-gnu added to your path
+        /ifs/faculty/shattuck/incoming
+
+
+NOTES:
+Main changes to note for BIDS compliancy, when restructuring your dataset:
+        Require participants.tsv on top level of dataset directory
+        All data for a subject goes into subjID directory
+            In each subject's directory, subfolders specify type of data (T1 weighted goes into anat directory)
+            T1 weighted data is suffixed with _T1w, and is named after subjID, as per BIDS convention
+                Example: The data for subject with subjID of sub-1003 is named: sub-1003_T1w.nii.gz
+
+
+Support for multiple sessions not yet implemented
+    For now, give multiple sessions of the same subject different subjIDs
+
+
+public directory will look like this:
+public
+    index.html
+    brainsuite_state.json
+    thumbnails
+        1003
+            ...
+        1004
+            ...
+    statistics
+        1003
+            ...
+        1004
+            ...
