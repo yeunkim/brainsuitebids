@@ -1,5 +1,33 @@
 #! /bin/sh
 
+
+#Expect 2 arguments.
+#$1: subjID (In single session case, is just subject ID. In multisubject, will be sub-ID_ses-sessionName)
+#$2: ubjectDataFile
+initAndProcess () {
+    id=$1
+    dataFile=$2
+    
+    if [ ! -e ${dataFile} ]
+    then
+        echo "Error: file ${dataFile} does not exist. Skipping this file."
+        return 
+    fi
+    
+    echo ${id} >> ${subjectsAndSessionsFile}
+
+    subjectDerivativeBase=${DERIVATIVES_DIR}/${id}
+    subjectThumbnailsBase=${PUBLIC}/${THUMBNAILS_PATH}/${id}
+
+    mkdir -p ${subjectDerivativeBase}
+    mkdir -p ${subjectThumbnailsBase}
+    volblend ${PNG_OPTIONS} -i ${dataFile} -o ${subjectThumbnailsBase}/${id}.png
+    echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
+    logFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.log
+    logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.err.log
+    qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC}
+}
+
 USAGE_MESSAGE=\
 "\n\n
 Usage: `basename $0` dataset [public]\n
@@ -34,7 +62,6 @@ fi
 
 PARTICIPANTS_FILE=$1/participants.tsv
 DERIVATIVES_DIR=$1/Derivatives
-mkdir -p ${DERIVATIVES_DIR}
 THUMBNAILS_PATH="/thumbnails"
 STATUS_FILENAME="/status.txt"
 LOG_PATH="/logging"
@@ -77,7 +104,7 @@ fi
 #Check existance of PUBLIC directory, create if needed.
 if [ ! -d ${PUBLIC} ]
 then
-    mkdir ${PUBLIC}
+    mkdir -p ${PUBLIC}
     if [ $? -ne 0 ]
     then
         echo -e ${USAGE_MESSAGE}
@@ -102,6 +129,8 @@ fi
 #Parse subjects from PARTICIPANTS_FILE, make qsub calls
 readingHeader=1
 participantIndex=-1
+isMultiSession=0 #0:undetermined; 1:is multisession -1:not multisession.
+subjectsAndSessionsFile=""
 OLD_IFS=$IFS
 IFS=$'\n'
 for line in `grep -v "^[[:space:]]*$" $PARTICIPANTS_FILE`
@@ -117,29 +146,44 @@ do
                 participantIndex=$i
             fi
         done
-
+        subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjectsAndSessions.txt
+        touch ${subjectsAndSessionsFile}
         readingHeader=0
     else
         IFS=$'\t '
         read -r -a row <<< ${line}
         subjID=${row[$participantIndex]}
-        subjectDataFile=${1}/${subjID}/anat/${subjID}_T1w.nii.gz
-        subjectDerivativeBase=${DERIVATIVES_DIR}/${subjID}
-        subjectThumbnailsBase=${PUBLIC}/${THUMBNAILS_PATH}/${subjID}
+        
+        if [ $isMultiSession -eq 0 ]
+        then
+            #If subject directory contains folder containing ses-
+            if [[ $(ls ${1}/${subjID} | grep ses-) ]]
+            then
+                isMultiSession=1
+            else
+                isMultiSession=-1
+            fi
+        fi
+        
+        if [ ${isMultiSession} -eq 1 ]
+        then
+            ls ${1}/${subjID} | while read s
+            do
+                subjAndSesID=${subjID}_${s}
+                subjectDataFile=${1}/${subjID}/${s}/anat/${subjAndSesID}_T1w.nii.gz
+                initAndProcess ${subjAndSesID} ${subjectDataFile} 
+            done
+        else
+            subjectDataFile=${1}/${subjID}/anat/${subjID}_T1w.nii.gz
+            initAndProcess ${subjID} ${subjectDataFile}
+        fi
 
-        mkdir -p ${subjectDerivativeBase}
-        mkdir -p ${subjectThumbnailsBase}
-        volblend ${PNG_OPTIONS} -i ${subjectDataFile} -o ${subjectThumbnailsBase}/${subjID}.png
-        echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
-        logFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.log
-        logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${subjID}.err.log
-        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${subjectDataFile} ${subjectDerivativeBase} ${PUBLIC}
     fi
 done
 
 IFS=$OLD_IFS
 cp index.html ${PUBLIC}
-python ./py/genStatusFile.py $PARTICIPANTS_FILE ${PUBLIC}
+python ./py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
 
 exit 0
 

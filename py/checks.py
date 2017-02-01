@@ -57,13 +57,7 @@ def verifyBrainsuiteInstalled():
 
 def createSubjectDirectory(base, subject):
     """Returns base/subject"""
-    return base + os.sep + subject + os.sep + "anat"
-
-def createSubjectDataPath(base, subject):
-    """Returns base/subject/subject.nii.gz"""
-
-    return createSubjectDirectory(base, subject) + os.sep + subject + "_T1w.nii.gz"
-
+    return base + os.sep + subject
 
 def parseInput():
     """#Parses arguments, tries to read file passed in
@@ -124,14 +118,10 @@ Expected format of subjectsFile:
                     return False
                 currentSubjID = currentRow[subjectNameIndex]
                 checkDirectory = createSubjectDirectory(baseDirectory, currentSubjID)
-                checkFile = createSubjectDataPath(baseDirectory, currentSubjID)
                 if not os.path.isdir(checkDirectory):
                     print("Error: the following path is not an existing directory: %s" % checkDirectory)
                     return False
-                if not os.path.isfile(checkFile):
-                    print("Error while validating file structure: following file does not exist: %s " % checkFile)
-                    return False
-
+                
                 subjectDirectories.append(currentSubjID)
 
     if(not firstTime and len(subjectDirectories) != 0):
