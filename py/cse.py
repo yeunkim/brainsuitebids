@@ -115,7 +115,7 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
             command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile))
     else:
         #From Pialmesh(step 9) onwards, we are dealing with dfs. Must use dfsrender
-        command = ("dfsrender08b_x86_64-redhat-linux-gnu -i %s -o %s %s" % (connectFile, outputPNGFile, DFS_RENDER_OPTIONS))
+        command = ("dfsrender -s %s -o %s %s" % (connectFile, outputPNGFile, DFS_RENDER_OPTIONS))
     
     #TODO: Error check. What behavior if png render failure?
     renderReturnValue = os.system(command)

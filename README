@@ -6,7 +6,7 @@ Requirements:
     Dataset must be provided in BIDS format. <http://bids.neuroimaging.io/>
     Must have volblend added to your path
         /ifs/faculty/shattuck/incoming
-    Must have dfsrender08b_x86_64-redhat-linux-gnu added to your path
+    Must have dfsrender added to your path
         /ifs/faculty/shattuck/incoming
 
 
