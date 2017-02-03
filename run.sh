@@ -18,10 +18,13 @@ initAndProcess () {
 
     subjectDerivativeBase=${DERIVATIVES_DIR}/${id}
     subjectThumbnailsBase=${PUBLIC}/${THUMBNAILS_PATH}/${id}
+    dataSinkTarget=${subjectDerivativeBase}/CSE_outputs
 
     mkdir -p ${subjectDerivativeBase}
     mkdir -p ${subjectThumbnailsBase}
     volblend ${PNG_OPTIONS} -i ${dataFile} -o ${subjectThumbnailsBase}/${id}.png
+    mkdir -p ${dataSinkTarget}
+    cp ${dataFile} ${dataSinkTarget}
     echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
     logFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.log
     logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.err.log
@@ -41,9 +44,9 @@ Usage: `basename $0` dataset [public]\n
 Additional info:\n
 To view QC system on browser, navigate to public directory in web browser.\n
 (Ideally, public would be a public_html directory, or a directory made public through a webserver)\n
-\n
 All derived data will be placed in the Derivatives directory, as described by BIDS specifications\n
-Each subject's derived folder will contain the nipype_workflow; intermediate data from each step can be found here\n
+All intermediate data from each step may be found in: {dataset}/Derivatives/{subjID}/CSE_outputs\n
+All thumbnails and statistical reports will be placed in public directory\n
 
 \n\n
 "

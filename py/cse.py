@@ -287,11 +287,11 @@ def runWorkflow():
     brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bfcObj, 'inputMRIFile')
     bseDoneWrapper.inputs.connectFile = INPUT_MRI_FILE
     brainsuite_workflow.connect(bseObj, 'outputMaskFile', bseDoneWrapper, 'secondaryFile')
-
+    
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', pvcObj, 'inputMRIFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', bfcDoneWrapper, 'connectFile')
     bfcDoneWrapper.inputs.secondaryFile = None
-
+    
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', cortexObj, 'inputTissueFractionFile')
     brainsuite_workflow.connect(pvcObj, 'outputLabelFile', pvcDoneWrapper, 'connectFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', pvcDoneWrapper, 'secondaryFile')
@@ -308,8 +308,6 @@ def runWorkflow():
 
     brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', scrubmaskDoneWrapper, 'connectFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', scrubmaskDoneWrapper, 'secondaryFile')
-
-
     brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', tcaObj, 'inputMaskFile')
     brainsuite_workflow.connect(tcaObj, 'outputMaskFile', dewispObj, 'inputMaskFile')
     brainsuite_workflow.connect(tcaObj, 'outputMaskFile', tcaDoneWrapper, 'connectFile')
@@ -333,8 +331,33 @@ def runWorkflow():
     brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', hemisplitObj, 'inputHemisphereLabelFile')
     brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', hemisplitDoneWrapper, 'connectFile')
     hemisplitDoneWrapper.inputs.secondaryFile = None
-
+    
+    ds = pe.Node(io.DataSink(), name='DATASINK')
+    ds.inputs.base_directory = WORKFLOW_BASE_DIRECTORY
+    
+    #**DataSink connections**
+    brainsuite_workflow.connect(bseObj, 'outputMRIVolume', ds, 'CSE_outputs')
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, 'CSE_outputs.@1')
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, 'CSE_outputs.@2')
+    brainsuite_workflow.connect(pvcObj, 'outputLabelFile', ds, 'CSE_outputs.@3')
+    brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', ds, 'CSE_outputs.@4')
+    brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', ds, 'CSE_outputs.@5')
+    brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', ds, 'CSE_outputs.@6')
+    brainsuite_workflow.connect(cerebroObj, 'outputAffineTransformFile', ds, 'CSE_outputs.@7')
+    brainsuite_workflow.connect(cerebroObj, 'outputWarpTransformFile', ds, 'CSE_outputs.@8')
+    brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', ds, 'CSE_outputs.@9')
+    brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', ds, 'CSE_outputs.@10')
+    brainsuite_workflow.connect(tcaObj, 'outputMaskFile', ds, 'CSE_outputs.@11')
+    brainsuite_workflow.connect(dewispObj, 'outputMaskFile', ds, 'CSE_outputs.@12')
+    brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', ds, 'CSE_outputs.@13')
+    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', ds, 'CSE_outputs.@14')
+    brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', ds, 'CSE_outputs.@15')
+    brainsuite_workflow.connect(hemisplitObj, 'outputRightHemisphere', ds, 'CSE_outputs.@16')
+    brainsuite_workflow.connect(hemisplitObj, 'outputLeftPialHemisphere', ds, 'CSE_outputs.@17')
+    brainsuite_workflow.connect(hemisplitObj, 'outputRightPialHemisphere', ds, 'CSE_outputs.@18')
+    
     brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
+
 
     #Print message when all processing is complete.
     print('Processing for subject %s has completed. Nipype workflow is located at: %s' % (SUBJECT_ID, WORKFLOW_BASE_DIRECTORY))
