@@ -95,7 +95,7 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
     subject_id = os.path.basename(os.path.dirname(statusPath))
     outputPNGFile = public + "/thumbnails/" + subject_id + os.sep + subject_id + STEP_PNG_SUFFIX[status]
 
-    PNG_OPTIONS = "--view 3 --slice 60"
+    PNG_OPTIONS = "--view 3 --slice 120"
     DFS_RENDER_OPTIONS = "--zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512"
 
     command = ""
