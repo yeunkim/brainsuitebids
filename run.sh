@@ -1,12 +1,79 @@
 #! /bin/sh
 
+show_help(){
+cat << EOF
+BrainSuite QC System
 
-#Expect 2 arguments.
-#$1: subjID (In single session case, is just subject ID. In multisubject, will be sub-ID_ses-sessionName)
-#$2: ubjectDataFile
+Usage: `basename $0` -d <dataset> [settings]
+
+Required settings:
+-d <directory_path>         
+    path to a BIDS formatted dataset. participants.tsv is required for
+    this program to work. Program will determine what subjects to process
+    using the contents of participants.tsv. You may edit participants.tsv
+    to ignore subjects in the dataset. You may then use -i <regex> and
+    -s <regex> to filter by subject ID and session.
+
+Optional settings:
+-p <directory_path>
+    directory where index.html, thumbnails directory, and
+    brainsuite_state.json will be created. Program will create public
+    directory if it does not already exist.
+    [default: <dataset>/Derivatives, where <dataset> is input to -d]
+
+-i <regex>
+    provide a regex to filter subjects by subjectID. Only subjects whose 
+    subject ID match the provided regex will be processed.
+    Expression will be interpreted in ERE syntax; will act like grep -r
+    on each subject name in your dataset. Quotes around your expression
+    are not required, but are recommended when usig special operators.
+    Can be used along with -s <regex>.
+    [default: .*]
+
+-s <regex>
+    provide a regex to filter by session label. If dataset does not
+    include session layer of directory structure (this is only allowed by
+    BIDS when each subject has exactly one session), then session label
+    regex will be ignored.
+    Expression will be interpreted in ERE syntax; will act like grep -r
+    on each subject name in your dataset. Quotes around your expression
+    are not required, but are recommended when usig special operators.
+    Can be used along with -i <regex>.
+    [default: .*]
+
+-t
+    For testing purposes. Will cause program to print out name of
+    each file that would have been processed, without making qsub
+    calls. Useful for debugging or for testing your regex matches.
+
+Additional information:
+======================
+To view QC system on browser, navigate to public directory in web browser.
+(Ideally, public would be a public_html directory, or a directory made
+public through a webserver).
+
+All derived data will be placed in the Derivatives directory, as required
+by BIDS specifications.
+
+All intermediate data from each step may be found in:
+    {dataset}/Derivatives/{subjID}/CSE_outputs
+
+All thumbnails and statistical reports will be placed in public directory
+
+EOF
+}
+
+
 initAndProcess () {
     id=$1
     dataFile=$2
+    
+    if [ $a_t -eq 1 ]
+    then
+        echo $dataFile
+        return 0
+    fi
+    
     
     if [ ! -e ${dataFile} ]
     then
@@ -31,67 +98,124 @@ initAndProcess () {
     qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC}
 }
 
-USAGE_MESSAGE=\
-"\n\n
-Usage: `basename $0` dataset [public]\n
-\tdataset\n
-\t\tmust be the path to a BIDS formatted dataset. participants.tsv is required for this program to work\n
-\tpublic\n
-\t\tdirectory where index.html, thumbnails directory, and brainsuite_state.json will be created.\n
-\t\tProgram will create public directory if it does not already exist\n
-\t\tIf public is unspecified, its value will default to dataset/Derivatives 
-\n
-Additional info:\n
-To view QC system on browser, navigate to public directory in web browser.\n
-(Ideally, public would be a public_html directory, or a directory made public through a webserver)\n
-All derived data will be placed in the Derivatives directory, as described by BIDS specifications\n
-All intermediate data from each step may be found in: {dataset}/Derivatives/{subjID}/CSE_outputs\n
-All thumbnails and statistical reports will be placed in public directory\n
+check_duplicate_option(){
+    if [ $1 -eq 1 ]
+    then
+        echo "Option $2 provided twice. Incorrect usage. Exiting."
+        echo "For usage instructions, call `basename $0` with no options"
+        return 1
+    fi
+}
 
-\n\n
-"
-
-echo
-echo "BrainSuite QC System"
-echo
-
-if [ "$#" -ne 2 ] && [ "$#" -ne 1 ]
-then
-    echo -e ${USAGE_MESSAGE}
-    echo "Error: Expected 1 or 2 command line arguments, got $#"
-    echo "Exiting with error code 1"
-    exit 1
-fi
-
-PARTICIPANTS_FILE=$1/participants.tsv
-DERIVATIVES_DIR=$1/Derivatives
 THUMBNAILS_PATH="/thumbnails"
 STATUS_FILENAME="/status.txt"
 LOG_PATH="/logging"
 BASE_DIRECTORY=""
-PNG_OPTIONS="--view 3 --slice 60"
+PNG_OPTIONS="--view 3 --slice 120"
 PUBLIC=""
-if [ "$#" -eq 1 ]
-then
-    PUBLIC=DERIVATIVES_DIR
-    echo "no public directory was specified; will save web files in $PUBLIC"
-else
-    PUBLIC=$2
-fi
 
-if [ ! -e $PARTICIPANTS_FILE ]
+ARG_DATASET="" #set in optparse
+PARTICIPANTS_FILE="" #set in optparse
+DERIVATIVES_DIR="" #set in optparse
+SUBJECT_REGEX=".*" #set in optparse
+SESSION_REGEX=".*" #set in optparse
+
+OPTIND=1
+gotOption=0
+
+a_gotOption=0
+a_d=0
+a_p=0
+a_i=0
+a_s=0
+a_t=0
+
+while getopts ":d:p:i:s:t" opt; do
+    a_gotOption=1
+    case $opt in
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            echo "For usage instructions, call `basename $0` with no options"
+            exit 1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            echo "For usage instructions, call `basename $0` with no options"
+            exit 1
+            ;;
+        d)
+            check_duplicate_option $a_d $opt
+            if [ $? -ne 0 ]; then exit 1; fi
+            a_d=1
+            PARTICIPANTS_FILE=$OPTARG/participants.tsv
+            DERIVATIVES_DIR=$OPTARG/Derivatives
+            ARG_DATASET=$OPTARG
+            ;;
+        p)
+            check_duplicate_option $a_p $opt
+            if [ $? -ne 0 ]; then exit 1; fi
+            a_p=1
+            PUBLIC=$OPTARG
+            ;;
+        i)
+            check_duplicate_option $a_i $opt
+            if [ $? -ne 0 ]; then exit 1; fi
+            a_i=1
+            SUBJECT_REGEX=$OPTARG
+            ;;
+        s)
+            check_duplicate_option $a_s $opt
+            if [ $? -ne 0 ]; then exit 1; fi
+            a_s=1
+            SESSION_REGEX=$OPTARG
+            ;;
+        t)
+            a_t=1
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+if [ $# -ne 0 ]
 then
-    echo -e ${USAGE_MESSAGE}
-    echo "Error: $PARTICIPANTS_FILE does not exist."
-    echo "Exiting with error code 1"
+    echo Unrecognized option $1
+    echo "For usage instructions, call `basename $0` with no options"
     exit 1
 fi
 
-if [ ! -d $1 ]
+if [ $a_gotOption -eq 0 ]
 then
-    echo -e ${USAGE_MESSAGE}
-    echo "Error: $1 is not a directory."
-    echo "Exiting with error code 1"
+    show_help
+    exit 1
+fi
+
+if [ $a_d -eq 0 ]
+then
+    echo "Option -d is mandatory, but was not provided."
+    echo "For usage instructions, call `basename $0` with no options"
+    exit 1
+fi
+
+if [ $a_p -eq 0 ]
+then
+    PUBLIC=$DERIVATIVES_DIR
+    echo "No public directory was specified using the -p option; will save web files in $PUBLIC"
+fi
+
+#Done parsing arguments
+
+if [ ! -e $PARTICIPANTS_FILE ]
+then
+    echo "Error: $PARTICIPANTS_FILE does not exist."
+    echo "For usage instructions, call `basename $0` with no options"
+    exit 1
+fi
+
+if [ ! -d $ARG_DATASET ]
+then
+    echo "Error: $ARG_DATASET is not a directory."
+    echo "For usage instructions, call `basename $0` with no options"
     exit 1
 fi
 
@@ -110,9 +234,8 @@ then
     mkdir -p ${PUBLIC}
     if [ $? -ne 0 ]
     then
-        echo -e ${USAGE_MESSAGE}
         echo "Error creating directory ${PUBLIC}"
-        echo "Exiting with error code 1"
+        echo "For usage instructions, call `basename $0` with no options"
         exit 1
     fi
 
@@ -150,6 +273,7 @@ do
             fi
         done
         subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjectsAndSessions.txt
+        rm ${subjectsAndSessionsFile}
         touch ${subjectsAndSessionsFile}
         readingHeader=0
     else
@@ -160,7 +284,7 @@ do
         if [ $isMultiSession -eq 0 ]
         then
             #If subject directory contains folder containing ses-
-            if [[ $(ls ${1}/${subjID} | grep ses-) ]]
+            if [[ $(ls ${ARG_DATASET}/${subjID} | grep ses-) ]]
             then
                 isMultiSession=1
             else
@@ -168,25 +292,33 @@ do
             fi
         fi
         
-        if [ ${isMultiSession} -eq 1 ]
+        if [[ ${subjID} =~ ${SUBJECT_REGEX} ]]
         then
-            ls ${1}/${subjID} | while read s
-            do
-                subjAndSesID=${subjID}_${s}
-                subjectDataFile=${1}/${subjID}/${s}/anat/${subjAndSesID}_T1w.nii.gz
-                initAndProcess ${subjAndSesID} ${subjectDataFile} 
-            done
-        else
-            subjectDataFile=${1}/${subjID}/anat/${subjID}_T1w.nii.gz
-            initAndProcess ${subjID} ${subjectDataFile}
+            if [ ${isMultiSession} -eq 1 ]
+            then
+                ls ${ARG_DATASET}/${subjID} | while read s
+                do
+                    if [[ ${s} =~ ${SESSION_REGEX} ]]
+                    then
+                        subjAndSesID=${subjID}_${s}
+                        subjectDataFile=${ARG_DATASET}/${subjID}/${s}/anat/${subjAndSesID}_T1w.nii.gz
+                        initAndProcess ${subjAndSesID} ${subjectDataFile}
+                    fi
+                done
+            else
+                subjectDataFile=${ARG_DATASET}/${subjID}/anat/${subjID}_T1w.nii.gz
+                initAndProcess ${subjID} ${subjectDataFile}
+            fi
         fi
-
     fi
 done
 
 IFS=$OLD_IFS
-cp index.html ${PUBLIC}
-python ./py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
+if [ $a_t -eq 0 ]
+then
+    cp index.html ${PUBLIC}
+    python ./py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
+fi
 
 exit 0
 
