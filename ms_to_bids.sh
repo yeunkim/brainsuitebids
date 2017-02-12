@@ -1,5 +1,8 @@
 #! /bin/sh
-
+#***IMPORTANT: $2 MUST HAVE A TRAILING SLASH.***
+# recommended usage: ./ms_to_bids /ifs/faculty/shattuck/MS2016 ~/Documents/MS_BIDS
+# $1: base directory of MS data
+# $2: base directory where you want to create new BIDS formatted directory. Will create this dir for you
 
 base=$2
 participantsTSV="${base}participants.tsv"
@@ -9,7 +12,8 @@ touch ${participantsTSV}
 echo "participant_id" >> $participantsTSV
 ls ${1} | while read s
 do
-    sub="sub-$s"
+    #Regex changes something like: 01-122-31 into 01c122s31. (c means clinicID, s means subjectID)
+    sub=`echo $s | sed -r 's/(.*)_(.*)_(.*)/sub-\1c\2s\3/'`
     echo $sub >> $participantsTSV
     subBase="$base$sub/"
     mkdir -p $subBase
@@ -25,7 +29,7 @@ do
             echo "Error file $inpaintFile does not exist. Skipping"
         else
 
-            bids_inpaintFile="${subBase}${sessionDir}_inpaint/anat/sub-${s}_${sessionDir}_inpaint_T1w.nii.gz"
+            bids_inpaintFile="${subBase}${sessionDir}_inpaint/anat/${sub}_${sessionDir}_inpaint_T1w.nii.gz"
             mkdir -p `dirname $bids_inpaintFile`
             cp $inpaintFile $bids_inpaintFile
             echo "${inpaintFile} --> ${bids_inpaintFile}" >> $log
@@ -36,7 +40,7 @@ do
         then
             echo "Error file $rawFile does not exist. Skipping"
         else
-            bids_rawFile="${subBase}${sessionDir}_raw/anat/sub-${s}_${sessionDir}_raw_T1w.nii.gz"
+            bids_rawFile="${subBase}${sessionDir}_raw/anat/${sub}_${sessionDir}_raw_T1w.nii.gz"
             mkdir -p `dirname $bids_rawFile`
             cp $rawFile $bids_rawFile
             echo "${rawFile} --> ${bids_rawFile} " >> $log
