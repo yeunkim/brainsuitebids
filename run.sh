@@ -4,7 +4,7 @@ show_help(){
 cat << EOF
 BrainSuite QC System
 
-Usage: `basename $0` -d <dataset> [settings]
+Usage: `basename $0` -d <directory_path> [settings]
 
 Required settings:
 -d <directory_path>         
@@ -24,9 +24,10 @@ Optional settings:
 -i <regex>
     provide a regex to filter subjects by subjectID. Only subjects whose 
     subject ID match the provided regex will be processed.
-    Expression will be interpreted in ERE syntax; will act like grep -r
+    Expression will be interpreted in ERE syntax; will act like grep -E
     on each subject name in your dataset. Quotes around your expression
-    are not required, but are recommended when usig special operators.
+    are not required, but are recommended when using special operators
+    such as or (|).
     Can be used along with -s <regex>.
     [default: .*]
 
@@ -34,17 +35,20 @@ Optional settings:
     provide a regex to filter by session label. If dataset does not
     include session layer of directory structure (this is only allowed by
     BIDS when each subject has exactly one session), then session label
-    regex will be ignored.
-    Expression will be interpreted in ERE syntax; will act like grep -r
-    on each subject name in your dataset. Quotes around your expression
-    are not required, but are recommended when usig special operators.
+    regex will be ignored. Only data from sessions whose session label
+    match the provided regex will be processed.
+    Expression will be interpreted in ERE syntax; will act like grep -E
+    on each session label in your dataset. Quotes around your expression
+    are not required, but are recommended when using special operators
+    such as or (|).
     Can be used along with -i <regex>.
     [default: .*]
 
 -t
     For testing purposes. Will cause program to print out name of
-    each file that would have been processed, without making qsub
-    calls. Useful for debugging or for testing your regex matches.
+    each file that would have been processed, without actually 
+    starting any processing jobs.
+    Useful for debugging or for testing your regex matches.
 
 Additional information:
 ======================
@@ -56,7 +60,7 @@ All derived data will be placed in the Derivatives directory, as required
 by BIDS specifications.
 
 All intermediate data from each step may be found in:
-    {dataset}/Derivatives/{subjID}/CSE_outputs
+    {dataset}/Derivatives/{subjID_sessionLabel}/CSE_outputs
 
 All thumbnails and statistical reports will be placed in public directory
 
@@ -219,7 +223,7 @@ then
     exit 1
 fi
 
-python ./py/checks.py $PARTICIPANTS_FILE
+python `dirname $0`/py/checks.py $PARTICIPANTS_FILE
 if [ $? -ne 0 ]
 then
     echo "Error. Checks.py failure."
@@ -273,7 +277,7 @@ do
             fi
         done
         subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjectsAndSessions.txt
-        rm ${subjectsAndSessionsFile}
+        rm -f ${subjectsAndSessionsFile}
         touch ${subjectsAndSessionsFile}
         readingHeader=0
     else
@@ -317,7 +321,7 @@ IFS=$OLD_IFS
 if [ $a_t -eq 0 ]
 then
     cp index.html ${PUBLIC}
-    python ./py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
+    python `dirname $0`/py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
 fi
 
 exit 0
