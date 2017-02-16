@@ -29,7 +29,7 @@ do
             echo "Error file $inpaintFile does not exist. Skipping"
         else
 
-            bids_inpaintFile="${subBase}${sessionDir}_inpaint/anat/${sub}_${sessionDir}_inpaint_T1w.nii.gz"
+            bids_inpaintFile="${subBase}${sessionDir}inpaint/anat/${sub}_${sessionDir}inpaint_T1w.nii.gz"
             mkdir -p `dirname $bids_inpaintFile`
             cp $inpaintFile $bids_inpaintFile
             echo "${inpaintFile} --> ${bids_inpaintFile}" >> $log
@@ -40,7 +40,7 @@ do
         then
             echo "Error file $rawFile does not exist. Skipping"
         else
-            bids_rawFile="${subBase}${sessionDir}_raw/anat/${sub}_${sessionDir}_raw_T1w.nii.gz"
+            bids_rawFile="${subBase}${sessionDir}raw/anat/${sub}_${sessionDir}raw_T1w.nii.gz"
             mkdir -p `dirname $bids_rawFile`
             cp $rawFile $bids_rawFile
             echo "${rawFile} --> ${bids_rawFile} " >> $log
