@@ -108,6 +108,9 @@
              "topology correction", "inner cortex mask generation", "inner cortical surface generation",
              "pial cortex", "hemisphere splitting"]; //"labeled cortex"];
 
+        const STEPS =
+            ["mri", "bse", "bfc", "pvc", "cerebro", "cortex", "scrubmask", "tca", "dewisp", "dfs", "pialmesh", "hemisplit"];
+
         const SHORT_NAMES =
             ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask",
              "initial cortex mask", "scrubbed cortex", "topo-corrected", "inner cortex mask",
@@ -125,6 +128,8 @@
         var ajaxLock = false;
         var THUMBNAILS_ABSPATH;
         var THUMBNAILS_RELATIVEPATH;
+        var STATS_ABSPATH;
+        var STATS_RELATIVEPATH;
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
 
@@ -148,6 +153,8 @@
                             setStatus(statusString);
                             THUMBNAILS_ABSPATH = json.thumbnails_abspath;
                             THUMBNAILS_RELATIVEPATH = BASE_URL + json.thumbnails_relativepath;
+                            STATS_ABSPATH = json.stats_abspath;
+                            STATS_RELATIVEPATH = BASE_URL + json.stats_relativepath;
                             //Init arrays
                             for(var i = 0 ; i < Object(json.subjects).length; i++){
                                 subjects.push(json.subjects[i].name);
@@ -175,7 +182,7 @@
             for(var i = 0 ; i < subjects.length ; i++){
                 galleryHTML +=
                     `<li id="li${i}" style="border:2px solid black;">
-                        <img id="img${i}" height="128px" onclick="loadSubjTray(${i})" />
+                        <img id="img${i}" height="128px" style="cursor: pointer;" onclick="loadSubjTray(${i})" />
                         <div class="subjtext" id="text${i}">${subjects[i]}<br>Initializing</div>
                         <div class="progressbar">
                             <div class="progressCompleted" id="progress${i}">
@@ -221,10 +228,27 @@
             }
 
             statusString += "</p>";
+            $("#trayStatus").html(statusString);
+
+
+            $("#trayThumbnails").empty();
             for (var i = 0; i <= subjectState; i++) {
-                statusString += "<img src='" + makeThumbnailURL(subjectIndex, i) + "' title='" + SHORT_NAMES[i] + "' width=" + (100 * 1 / PROCESS_NAMES.length) + "%>";
+                var imgToAdd = $("<img/>");
+                imgToAdd.attr("src", makeThumbnailURL(subjectIndex, i));
+                imgToAdd.attr("title", SHORT_NAMES[i]); 
+                imgToAdd.attr("width", (100 * 1 / PROCESS_NAMES.length) + "%");
+                imgToAdd.attr("imgStepNum", i);
+                imgToAdd.attr("imgSubjectIndex", selectedSubjectIndex);
+                imgToAdd.css("cursor", "pointer");
+                
+                $(imgToAdd).on("click", function(){
+                    $("#trayDialog").load(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")));
+                    //$("#trayDialog").html($(this).attr("imgStepNum"));
+                    $("#trayDialog").dialog("open");
+                });
+
+                $("#trayThumbnails").append(imgToAdd);
             }
-            $("#tray").html(statusString);
         }
 
 
@@ -244,6 +268,17 @@
                 async: false
             });
             return (http.status === 200);
+        }
+
+        function makeStatsURL(subjectIndex, state){
+            if(state < 0){
+                state = 0;
+            }
+            if(!STEP_NAMES[state]){
+                return null;
+            }
+            //TODO change thunbnaisl_relativepath to STATS_RELATIVEPATH
+            return THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + "-" + STEPS[state] + ".txt";
         }
 
 
@@ -375,6 +410,22 @@
             
             initPaths();
             initFromJSON();
+            
+            //Init dialog boxes
+            $("#trayDialog").dialog({
+                autoOpen: false,
+                show: {
+                    effect: "fade",
+                    duration: 250
+                },
+                hide: {
+                    effect: "fade",
+                    duration: 250
+                }
+            });
+            
+            
+
             startTimer();
         });
     </script>
@@ -407,7 +458,17 @@
             </div>
         </div>
 
-        <div id="tray" class="roundrect" style="margin-right:px"></div>
+        <div id="tray" class="roundrect" style="margin-right:px">
+            <div id="trayStatus">
+                <!-- Load with loadSubjTray -->
+            </div>
+            <div id="trayDialog" title="Statistics Report">
+                <!-- Update with onclick of each image in subject tray -->
+            </div>
+            <div id="trayThumbnails">
+                <!-- Load with loadSubjTray -->
+            </div>
+        </div>
         <div id="images" class="roundrect">
             <ul id="gallery">
                 <!-- Dynamically init from initFromJSON() -->
