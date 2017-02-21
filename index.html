@@ -108,18 +108,21 @@
              "topology correction", "inner cortex mask generation", "inner cortical surface generation",
              "pial cortex", "hemisphere splitting"]; //"labeled cortex"];
 
-        const STEPS =
-            ["mri", "bse", "bfc", "pvc", "cerebro", "cortex", "scrubmask", "tca", "dewisp", "dfs", "pialmesh", "hemisplit"];
 
         const SHORT_NAMES =
             ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask",
              "initial cortex mask", "scrubbed cortex", "topo-corrected", "inner cortex mask",
              "inner cortex", "pial cortex", "hemisphere split"]; //"labeled cortex"];
 
-        const STEP_NAMES =
+        const THUMBNAIL_SUFFIX =
             [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
              ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
              ".pial.cortex.png", ".left.png"];
+        
+        const STATS_SUFFIX =
+            ["-mri.txt", "-bse.txt", "-bfc.txt", "-pvc.txt", "-cerebro.txt", "-cortex.txt",
+             "-scrubmask.txt", "-tca.txt", "-dewisp.txt", "-dfs.txt", "-pialmesh.txt",
+             "-hemisplit.txt"];
         
         const DEFAULT_THUMB_SIZE = 128;
         const DEFAULT_SHOWSTAGE = PROCESS_NAMES.length - 1
@@ -244,6 +247,8 @@
                 $(imgToAdd).on("click", function(){
                     $("#trayDialog").load(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")));
                     //$("#trayDialog").html($(this).attr("imgStepNum"));
+                    $("#trayDialog").dialog("option", "width", $(window).width() * 0.60);
+                    $("#trayDialog").dialog("option", "height", $(window).height() * 0.35);
                     $("#trayDialog").dialog("open");
                 });
 
@@ -274,11 +279,10 @@
             if(state < 0){
                 state = 0;
             }
-            if(!STEP_NAMES[state]){
+            if(!THUMBNAIL_SUFFIX[state]){
                 return null;
             }
-            //TODO change thunbnaisl_relativepath to STATS_RELATIVEPATH
-            return THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + "-" + STEPS[state] + ".txt";
+            return STATS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + STATS_SUFFIX[state];
         }
 
 
@@ -286,10 +290,10 @@
             if (state < 0){
                 state = 0;
             }
-            if (!STEP_NAMES[state]){
+            if (!THUMBNAIL_SUFFIX[state]){
                 return null;
             }
-            return THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + STEP_NAMES[state];
+            return THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + THUMBNAIL_SUFFIX[state];
         }
 
 
@@ -415,7 +419,7 @@
             $("#trayDialog").dialog({
                 autoOpen: false,
                 show: {
-                    effect: "fade",
+                    effect: "fold",
                     duration: 250
                 },
                 hide: {

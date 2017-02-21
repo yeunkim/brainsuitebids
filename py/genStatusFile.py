@@ -32,6 +32,7 @@ from optparse import OptionParser
 DERIVATIVES_BASE_DIRECTORY = ""
 SUBJECTS = []
 PATH_TO_THUMBNAILS = "/thumbnails/"
+PATH_TO_STATS = "/statistics/"
 STATUS_NAME = "status.txt"
 
 ALL_DONE = False
@@ -106,8 +107,10 @@ def generateJSON(processingComplete):
     j['start_time'] = START_TIME_STRING
     j['runtime'] = str(datetime.now() - START_TIME).rsplit(".", 1)[0]
     j['thumbnails_abspath'] = PUBLIC + os.sep + PATH_TO_THUMBNAILS
+    j['stats_abspath'] = PUBLIC + os.sep + PATH_TO_STATS
     #relativepath is relative to where index.html will be placed
     j['thumbnails_relativepath'] = PATH_TO_THUMBNAILS
+    j['stats_relativepath'] = PATH_TO_STATS
 
     subjectsJSONArray = []
     seenNotDone = False

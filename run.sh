@@ -49,6 +49,9 @@ Optional settings:
     each file that would have been processed, without actually 
     starting any processing jobs.
     Useful for debugging or for testing your regex matches.
+-l
+    do all processing locally, without using qsub. Will automatically
+    activate this option if qsub can not be found in your path.
 
 Additional information:
 ======================
@@ -89,17 +92,29 @@ initAndProcess () {
 
     subjectDerivativeBase=${DERIVATIVES_DIR}/${id}
     subjectThumbnailsBase=${PUBLIC}/${THUMBNAILS_PATH}/${id}
+    subjectStatsBase=${PUBLIC}/${STATS_PATH}/${id}
     dataSinkTarget=${subjectDerivativeBase}/CSE_outputs
 
     mkdir -p ${subjectDerivativeBase}
+
     mkdir -p ${subjectThumbnailsBase}
     volblend ${PNG_OPTIONS} -i ${dataFile} -o ${subjectThumbnailsBase}/${id}.png
+    
+    mkdir -p ${subjectStatsBase}
+    echo -e "File name: ${dataFile}\nOther statistics TODO" > ${subjectStatsBase}/${id}-mri.txt
+
     mkdir -p ${dataSinkTarget}
     cp ${dataFile} ${dataSinkTarget}
     echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
     logFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.log
     logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.err.log
-    qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC}
+    if [ $noQsub -eq 0 ]
+    then
+        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC}
+    else
+        echo 
+        `dirname $0`/cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC} > $logFile 2> $logErrFile
+    fi
 }
 
 check_duplicate_option(){
@@ -112,6 +127,7 @@ check_duplicate_option(){
 }
 
 THUMBNAILS_PATH="/thumbnails"
+STATS_PATH="/statistics"
 STATUS_FILENAME="/status.txt"
 LOG_PATH="/logging"
 BASE_DIRECTORY=""
@@ -133,8 +149,9 @@ a_p=0
 a_i=0
 a_s=0
 a_t=0
+noQsub=0;
 
-while getopts ":d:p:i:s:t" opt; do
+while getopts ":d:p:i:s:tl" opt; do
     a_gotOption=1
     case $opt in
         \?)
@@ -176,6 +193,9 @@ while getopts ":d:p:i:s:t" opt; do
         t)
             a_t=1
             ;;
+        l)
+            noQsub=1
+            ;;
     esac
 done
 
@@ -205,6 +225,12 @@ if [ $a_p -eq 0 ]
 then
     PUBLIC=$DERIVATIVES_DIR
     echo "No public directory was specified using the -p option; will save web files in $PUBLIC"
+fi
+
+which qsub > /dev/null 2>&1 
+if [ $? -ne 0 ]
+then
+    noQsub=1
 fi
 
 #Done parsing arguments

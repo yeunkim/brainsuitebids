@@ -92,33 +92,47 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
                        ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
                        ".pial.cortex.png", ".left.png"]
 
+    STATS_SUFFIX = ["-mri.txt", "-bse.txt", "-bfc.txt", "-pvc.txt", "-cerebro.txt", "-cortex.txt",
+                          "-scrubmask.txt", "-tca.txt", "-dewisp.txt", "-dfs.txt", "-pialmesh.txt",
+                          "-hemisplit.txt"]
+
     subject_id = os.path.basename(os.path.dirname(statusPath))
+
+    #TODO: hardcoded /thumbnails/
     outputPNGFile = public + "/thumbnails/" + subject_id + os.sep + subject_id + STEP_PNG_SUFFIX[status]
+    #TODO: hardocded /statistics/
+    outputStatsFile = public + "/statistics/" + subject_id + os.sep + subject_id + STATS_SUFFIX[status]
 
     PNG_OPTIONS = "--view 3 --slice 120"
     DFS_RENDER_OPTIONS = "--zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512"
 
-    command = ""
+    thumbnailCommand = ""
     if status <= 8:
         if status == 1:
             #bse
-            command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, connectFile, secondaryFile, outputPNGFile))
+            thumbnailCommand = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, connectFile, secondaryFile, outputPNGFile))
         elif status == 2:
             #bfc
-            command = ("volblend %s -i %s -o %s" % (PNG_OPTIONS, connectFile, outputPNGFile))
+            thumbnailCommand = ("volblend %s -i %s -o %s" % (PNG_OPTIONS, connectFile, outputPNGFile))
         elif status == 3:
             #pvc
             #NOTE: Change this code when label description xml file changes
             LABEL_DESCRIPTION_FILE = find_executable('bse')[:-3] + '../labeldesc/brainsuite_labeldescriptions_14May2014.xml'
-            command = ("volblend %s -i %s -l %s -o %s -x %s" % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile, LABEL_DESCRIPTION_FILE))
+            thumbnailCommand = ("volblend %s -i %s -l %s -o %s -x %s" % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile, LABEL_DESCRIPTION_FILE))
         else:
-            command = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile))
+            thumbnailCommand = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile))
     else:
         #From Pialmesh(step 9) onwards, we are dealing with dfs. Must use dfsrender
-        command = ("dfsrender -s %s -o %s %s" % (connectFile, outputPNGFile, DFS_RENDER_OPTIONS))
+        thumbnailCommand = ("dfsrender -s %s -o %s %s" % (connectFile, outputPNGFile, DFS_RENDER_OPTIONS))
     
     #TODO: Error check. What behavior if png render failure?
-    renderReturnValue = os.system(command)
+    renderReturnValue = os.system(thumbnailCommand)
+    
+    stepName = ((STATS_SUFFIX[status]).split("-")[1]).split(".txt")[0]
+    #TODO: Change redirection to >
+    statsCommand = ("echo -e 'This is a temporary testing stats printout:\nViewing statistics after %s\nGenerated from file %s\nTODO: Edit py/cse.py to call a shell executable to generate stats on the above file\n' >> %s") % (stepName, connectFile, outputStatsFile)
+
+    statsReturnValue = os.system(statsCommand)
 
     print("Saving thumbnail at: %s" % outputPNGFile)
 
