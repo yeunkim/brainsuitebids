@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 show_help(){
 cat << EOF
@@ -112,8 +112,8 @@ initAndProcess () {
     then
         qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC}
     else
-        echo 
-        `dirname $0`/cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC} > $logFile 2> $logErrFile
+        echo "Registered local background process for file: ${dataFile}"
+        `dirname $0`/cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC} > $logFile 2> $logErrFile &
     fi
 }
 
@@ -227,10 +227,14 @@ then
     echo "No public directory was specified using the -p option; will save web files in $PUBLIC"
 fi
 
+echo "Checking for qsub in PATH"
 which qsub > /dev/null 2>&1 
 if [ $? -ne 0 ]
 then
+    echo "-l flag was not used, but qsub was not found in PATH. Will process jobs locally"
     noQsub=1
+else
+    echo "qsub found in PATH, will submit processing jobs using qsub"
 fi
 
 #Done parsing arguments
