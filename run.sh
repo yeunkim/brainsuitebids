@@ -227,14 +227,19 @@ then
     echo "No public directory was specified using the -p option; will save web files in $PUBLIC"
 fi
 
-echo "Checking for qsub in PATH"
-which qsub > /dev/null 2>&1 
-if [ $? -ne 0 ]
+if [ $noQsub -eq 1 ]
 then
-    echo "-l flag was not used, but qsub was not found in PATH. Will process jobs locally"
-    noQsub=1
+    echo "-l option was used. Will process jobs locally"
 else
-    echo "qsub found in PATH, will submit processing jobs using qsub"
+    echo "Checking for qsub in PATH"
+    which qsub > /dev/null 2>&1 
+    if [ $? -ne 0 ]
+    then
+        echo "-l option was not used, but qsub was not found in PATH. Will process jobs locally"
+        noQsub=1
+    else
+        echo "qsub found in PATH, will submit processing jobs using qsub"
+    fi
 fi
 
 #Done parsing arguments
