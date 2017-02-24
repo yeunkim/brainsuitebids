@@ -37,7 +37,7 @@ STATUS_NAME = "status.txt"
 
 ALL_DONE = False
 
-DONE_STATE = "11"
+DONE_STATE = "13"
 
 
 #For timing

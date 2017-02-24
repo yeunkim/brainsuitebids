@@ -74,6 +74,7 @@ EOF
 initAndProcess () {
     id=$1
     dataFile=$2
+    dwiBase=$3
     
     if [ $a_t -eq 1 ]
     then
@@ -84,9 +85,21 @@ initAndProcess () {
     
     if [ ! -e ${dataFile} ]
     then
-        echo "Error: file ${dataFile} does not exist. Skipping this file."
+        echo "Error: file ${dataFile} does not exist. Skipping this subject."
         return 
     fi
+
+
+
+    dwiPrefixes=( '.bval' '.bvec' '.nii.gz' )
+    for prefix in "${dwiPrefixes[@]}"
+    do
+        if [ ! -e ${dwiBase}${prefix} ]
+        then
+            echo "Erro: file ${dwiBase}${prefix} does not exist. Skipping this subject."
+            return
+        fi
+    done
     
     echo ${id} >> ${subjectsAndSessionsFile}
 
@@ -110,10 +123,10 @@ initAndProcess () {
     logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.err.log
     if [ $noQsub -eq 0 ]
     then
-        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC}
+        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC}
     else
         echo "Registered local background process for file: ${dataFile}"
-        `dirname $0`/cseQsubWrapper.sh ${dataFile} ${subjectDerivativeBase} ${PUBLIC} > $logFile 2> $logErrFile &
+        `dirname $0`/cseQsubWrapper.sh ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} > $logFile 2> $logErrFile &
     fi
 }
 
@@ -341,12 +354,16 @@ do
                     then
                         subjAndSesID=${subjID}_${s}
                         subjectDataFile=${ARG_DATASET}/${subjID}/${s}/anat/${subjAndSesID}_T1w.nii.gz
-                        initAndProcess ${subjAndSesID} ${subjectDataFile}
+                        subjectDwiBase=${ARG_DATASET}/${subjID}/${s}/dwi/${subjAndSesID}_dwi
+
+                        initAndProcess ${subjAndSesID} ${subjectDataFile} ${subjectDwiBase}
                     fi
                 done
             else
                 subjectDataFile=${ARG_DATASET}/${subjID}/anat/${subjID}_T1w.nii.gz
-                initAndProcess ${subjID} ${subjectDataFile}
+                subjectDwiBase=${ARG_DATASET}/${subjID}/dwi/${subjID}_dwi
+
+                initAndProcess ${subjID} ${subjectDataFile} ${subjectDwiBase}
             fi
         fi
     fi

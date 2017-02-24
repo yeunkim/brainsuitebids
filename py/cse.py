@@ -51,9 +51,11 @@ SUBJECT_ID = ""
 WORKFLOW_NAME = ""
 WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name.
 INPUT_MRI_FILE = ""
+INPUT_DWI_BASE = ""
 STATUS_FILEPATH = ""
 PUBLIC = ""
 
+CSE_OUTPUTS_DIR="CSE_outputs"
 
 CURRENT_STATUS = 0
 STATUSFILE = "status.txt"
@@ -80,6 +82,8 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
                    dfs          9
                    pialmesh     10 
                    hemisplit    11
+                   bdp          12
+                   svreg        13
     :param public: directory where we may save thumbnails and statistics
     :return: void
     """
@@ -90,11 +94,11 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
 
     STEP_PNG_SUFFIX = [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
                        ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
-                       ".pial.cortex.png", ".left.png"]
+                       ".pial.cortex.png", ".left.png", ".bdp.png", ".svreg.png"]
 
     STATS_SUFFIX = ["-mri.txt", "-bse.txt", "-bfc.txt", "-pvc.txt", "-cerebro.txt", "-cortex.txt",
                           "-scrubmask.txt", "-tca.txt", "-dewisp.txt", "-dfs.txt", "-pialmesh.txt",
-                          "-hemisplit.txt"]
+                          "-hemisplit.txt", "-bdp.txt", "-svreg.txt"]
 
     subject_id = os.path.basename(os.path.dirname(statusPath))
 
@@ -122,9 +126,18 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
         else:
             thumbnailCommand = ("volblend %s -i %s -m %s -o %s" % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile))
     else:
-        #From Pialmesh(step 9) onwards, we are dealing with dfs. Must use dfsrender
-        thumbnailCommand = ("dfsrender -s %s -o %s %s" % (connectFile, outputPNGFile, DFS_RENDER_OPTIONS))
-    
+        if status == 12:
+            #bdp
+            #BDP COMMAND: volblend -i DWI/2523412.dwi.RAS.nii.gz -o ~/public_html/test.png --view 3 --slice 60
+            thumbnailCommand = ("volblend %s -i %s -o %s") % (PNG_OPTIONS, connectFile, outputPNGFile)
+        elif status == 13:
+            #svreg
+            #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
+            thumbnailCommand = ("dfsrender -s %s -o %s %s") % (connectFile, outputPNGFile, DFS_RENDER_OPTIONS)
+        else:
+            #From Pialmesh(step 9) onwards, we are dealing with dfs. Must use dfsrender
+            thumbnailCommand = ("dfsrender -s %s -o %s %s") % (connectFile, outputPNGFile, DFS_RENDER_OPTIONS)
+
     #TODO: Error check. What behavior if png render failure?
     renderReturnValue = os.system(thumbnailCommand)
     
@@ -147,6 +160,7 @@ def init():
     :return:
     """
     global INPUT_MRI_FILE
+    global INPUT_DWI_BASE
     global BRAINSUITE_ATLAS_DIRECTORY
     global WORKFLOW_BASE_DIRECTORY
     global SUBJECT_ID
@@ -168,16 +182,17 @@ def init():
 
     parser = OptionParser(version=version_msg, usage=usage_msg)
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) != 3:
-        parser.error("Expected exactly 3 arguments, got %s" % len(args))
+    if len(args) != 4:
+        parser.error("Expected exactly 4 arguments, got %s" % len(args))
         return False
     
 
     #TODO: Add auto parsing of a brainsuite settings file, if file exists (this is a possible nice feature)
     
     INPUT_MRI_FILE = os.path.abspath(args[0])
-    WORKFLOW_BASE_DIRECTORY = os.path.abspath(args[1])
-    PUBLIC = os.path.abspath(args[2])
+    INPUT_DWI_BASE = os.path.abspath(args[1])
+    WORKFLOW_BASE_DIRECTORY = os.path.abspath(args[2])
+    PUBLIC = os.path.abspath(args[3])
 
     SUBJECT_ID = os.path.basename(os.path.normpath(WORKFLOW_BASE_DIRECTORY))
     WORKFLOW_NAME = SUBJECT_ID + WORKFLOW_SUFFIX
@@ -211,13 +226,27 @@ def runWorkflow():
     pialmeshObj=pe.Node(interface=bs.Pialmesh(),name='PIALMESH')
     hemisplitObj=pe.Node(interface=bs.Hemisplit(),name='HEMISPLIT')
 
+    bdpObj = pe.Node(interface=bs.BDP(), name='BDP')
+    svregObj = pe.Node(interface=bs.SVReg(), name='SVREG')
+
+    
+    #=====Inputs=====
+    bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + SUBJECT_ID + '_T1w'
+    svregInputBase =  WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + SUBJECT_ID + '_T1w'
 
     #Provided input file 
     bseObj.inputs.inputMRIFile = INPUT_MRI_FILE
     #Provided atlas files
     cerebroObj.inputs.inputAtlasMRIFile =(BRAINSUITE_ATLAS_DIRECTORY + ATLAS_MRI_SUFFIX)
     cerebroObj.inputs.inputAtlasLabelFile = (BRAINSUITE_ATLAS_DIRECTORY + ATLAS_LABEL_SUFFIX)
-   
+    #bdp inputs that will be created. We delay execution of BDP until all CSE and datasink are done
+    bdpObj.inputs.bfcFile = bdpInputBase + '.bfc.nii.gz'
+    bdpObj.inputs.inputDiffusionData = INPUT_DWI_BASE + '.nii.gz'
+    bdpObj.inputs.BVecBValPair = [ INPUT_DWI_BASE + '.bvec' , INPUT_DWI_BASE + '.bval' ]
+    bdpObj.inputs.outputSubdir = "DWI"
+    #svreg inputs that will be created. We delay execution of SVReg until all CSE and datasink are done
+    svregObj.inputs.subjectFilePrefix = svregInputBase
+       
 
     #Changes from default settings
     bseObj.inputs.diffusionConstant = 15 #-d
@@ -350,28 +379,35 @@ def runWorkflow():
     ds.inputs.base_directory = WORKFLOW_BASE_DIRECTORY
     
     #**DataSink connections**
-    brainsuite_workflow.connect(bseObj, 'outputMRIVolume', ds, 'CSE_outputs')
-    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, 'CSE_outputs.@1')
-    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, 'CSE_outputs.@2')
-    brainsuite_workflow.connect(pvcObj, 'outputLabelFile', ds, 'CSE_outputs.@3')
-    brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', ds, 'CSE_outputs.@4')
-    brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', ds, 'CSE_outputs.@5')
-    brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', ds, 'CSE_outputs.@6')
-    brainsuite_workflow.connect(cerebroObj, 'outputAffineTransformFile', ds, 'CSE_outputs.@7')
-    brainsuite_workflow.connect(cerebroObj, 'outputWarpTransformFile', ds, 'CSE_outputs.@8')
-    brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', ds, 'CSE_outputs.@9')
-    brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', ds, 'CSE_outputs.@10')
-    brainsuite_workflow.connect(tcaObj, 'outputMaskFile', ds, 'CSE_outputs.@11')
-    brainsuite_workflow.connect(dewispObj, 'outputMaskFile', ds, 'CSE_outputs.@12')
-    brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', ds, 'CSE_outputs.@13')
-    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', ds, 'CSE_outputs.@14')
-    brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', ds, 'CSE_outputs.@15')
-    brainsuite_workflow.connect(hemisplitObj, 'outputRightHemisphere', ds, 'CSE_outputs.@16')
-    brainsuite_workflow.connect(hemisplitObj, 'outputLeftPialHemisphere', ds, 'CSE_outputs.@17')
-    brainsuite_workflow.connect(hemisplitObj, 'outputRightPialHemisphere', ds, 'CSE_outputs.@18')
+    brainsuite_workflow.connect(bseObj, 'outputMRIVolume', ds, CSE_OUTPUTS_DIR)
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR + '.@1')
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, CSE_OUTPUTS_DIR + '.@2')
+    brainsuite_workflow.connect(pvcObj, 'outputLabelFile', ds, CSE_OUTPUTS_DIR + '.@3')
+    brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', ds, CSE_OUTPUTS_DIR + '.@4')
+    brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', ds, CSE_OUTPUTS_DIR + '.@5')
+    brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', ds, CSE_OUTPUTS_DIR + '.@6')
+    brainsuite_workflow.connect(cerebroObj, 'outputAffineTransformFile', ds, CSE_OUTPUTS_DIR + '.@7')
+    brainsuite_workflow.connect(cerebroObj, 'outputWarpTransformFile', ds, CSE_OUTPUTS_DIR + '.@8')
+    brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', ds, CSE_OUTPUTS_DIR + '.@9')
+    brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR + '.@10')
+    brainsuite_workflow.connect(tcaObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR + '.@11')
+    brainsuite_workflow.connect(dewispObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR + '.@12')
+    brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', ds, CSE_OUTPUTS_DIR + '.@13')
+    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', ds, CSE_OUTPUTS_DIR + '.@14')
+    brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', ds, CSE_OUTPUTS_DIR + '.@15')
+    brainsuite_workflow.connect(hemisplitObj, 'outputRightHemisphere', ds, CSE_OUTPUTS_DIR + '.@16')
+    brainsuite_workflow.connect(hemisplitObj, 'outputLeftPialHemisphere', ds, CSE_OUTPUTS_DIR + '.@17')
+    brainsuite_workflow.connect(hemisplitObj, 'outputRightPialHemisphere', ds, CSE_OUTPUTS_DIR + '.@18')
+
+    brainsuite_workflow.connect(ds, 'out_file', bdpObj, 'dataSinkDelay')
+    brainsuite_workflow.connect(ds, 'out_file', svregObj, 'dataSinkDelay')
     
     brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
-
+    
+    #BDP COMMAND: volblend -i DWI/2523412.dwi.RAS.nii.gz -o ~/public_html/test.png --view 3 --slice 60
+    #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
+    updateStatusFile(bdpInputBase + '.dwi.RAS.nii.gz', None, STATUS_FILEPATH, 12, PUBLIC)
+    updateStatusFile(svregInputBase + '.right.pial.cortex.svreg.dfs', None, STATUS_FILEPATH, 13, PUBLIC)
 
     #Print message when all processing is complete.
     print('Processing for subject %s has completed. Nipype workflow is located at: %s' % (SUBJECT_ID, WORKFLOW_BASE_DIRECTORY))
@@ -387,7 +423,5 @@ if __name__ == "__main__":
     if not WORKFLOW_SUCCESS == 1:
         #TODO: update with error code
         exit(1)
-
-
 
     exit(0)

@@ -106,23 +106,25 @@
             ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
              "cerebrum masking", "initial cortex masking", "mask scrubbing",
              "topology correction", "inner cortex mask generation", "inner cortical surface generation",
-             "pial cortex", "hemisphere splitting"]; //"labeled cortex"];
+             "pial cortex", "hemisphere splitting", "brain diffusion pipeline", "surface volume registration"];
 
 
         const SHORT_NAMES =
             ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask",
              "initial cortex mask", "scrubbed cortex", "topo-corrected", "inner cortex mask",
-             "inner cortex", "pial cortex", "hemisphere split"]; //"labeled cortex"];
+             "inner cortex", "pial cortex", "hemisphere split", "bdp", "svreg"];
 
+        //Must match cse.py
         const THUMBNAIL_SUFFIX =
             [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
              ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
-             ".pial.cortex.png", ".left.png"];
+             ".pial.cortex.png", ".left.png", ".bdp.png", ".svreg.png"];
         
+        //Must match cse.py
         const STATS_SUFFIX =
             ["-mri.txt", "-bse.txt", "-bfc.txt", "-pvc.txt", "-cerebro.txt", "-cortex.txt",
              "-scrubmask.txt", "-tca.txt", "-dewisp.txt", "-dfs.txt", "-pialmesh.txt",
-             "-hemisplit.txt"];
+             "-hemisplit.txt", "-bdp.txt", "-svreg.txt"];
         
         const DEFAULT_THUMB_SIZE = 128;
         const DEFAULT_SHOWSTAGE = PROCESS_NAMES.length - 1
