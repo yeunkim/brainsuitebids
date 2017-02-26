@@ -429,6 +429,11 @@
                     duration: 250
                 }
             });
+
+            //Init button on click to show/hide help
+            $("#showHelp").click(function(){
+                $("#help").toggle("blind", {}, 500);
+            });
             
             
 
@@ -462,6 +467,48 @@
                 <span>Show Stage</span>
                 <div id = "slider_showstage"></div>
             </div>
+            <div style="text-align: center;">
+                <button id="showHelp" class="ui-button ui-widget ui-corner-all">
+                    Show/Hide Help
+                </button>
+            </div>
+            <div id="help" style="display: none;">
+                <h4>BrainSuite QC System Help</h4>
+                <p>
+                The BrainSuite QC System is designed to allow scientists 
+                to launch BrainSuite processing workflows on datasets, and 
+                monitor thumbnails and statistics, which will be updated 
+                in real time as each step of the workflow is completed.
+                </p>
+
+                <h5>The interface</h5>
+                <p>
+                The interface is divided into three sections; the control menu, 
+                where you can view general information about your processing and 
+                change the display settings; the subject tray, where you can view 
+                each step of a selected subject; the subject gallery, where you 
+                can view the current stage of all your subjects, and select which
+                subject to show in the subject tray.
+                </p>
+
+                <h5>Viewing statistics</h5>
+                <p>
+                To view statistical reports, click on any thumbnail in the subject 
+                tray.
+                </p>
+
+                <h5>Using the subject gallery</h5>
+                <p>
+                Click on any subject in the subject gallery to change which subject is shown 
+                in the subject tray. The box for the selected subject is outlined
+                in blue. At the bottom of the box for each subject is a progress bar.
+                The grey bar represents the number of stages that have been completed so far,
+                and the blue bar represents what stage is currently being shown in the
+                subject box. Use the "show stage" slider in the control menu to change which
+                stage is shown. If the selected stage from the slider is greater than
+                the completed stage, the displayed stage is set to the maximum possible stage.
+                </p>
+            </div>
         </div>
 
         <div id="tray" class="roundrect" style="margin-right:px">
@@ -474,6 +521,7 @@
             <div id="trayThumbnails">
                 <!-- Load with loadSubjTray -->
             </div>
+
         </div>
         <div id="images" class="roundrect">
             <ul id="gallery">
