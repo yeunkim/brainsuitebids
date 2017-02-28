@@ -2,7 +2,8 @@
 
 #$ -V
 #$ -cwd
-#$ -l h_vmem=12G
+#$ -l h_vmem=23G
+#$ -l h_rt=11:00:00
 
 #Nodes do not have enough TMP space for Cerebro, so use local temp
 #TODO: make this a parameter in subjects.sh (/ifs/tmp/ is specific to this lab)
