@@ -52,6 +52,7 @@ WORKFLOW_NAME = ""
 WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name.
 INPUT_MRI_FILE = ""
 INPUT_DWI_BASE = ""
+BDP_BASE_DIRECTORY = "DWI"
 STATUS_FILEPATH = ""
 PUBLIC = ""
 
@@ -243,7 +244,7 @@ def runWorkflow():
     bdpObj.inputs.bfcFile = bdpInputBase + '.bfc.nii.gz'
     bdpObj.inputs.inputDiffusionData = INPUT_DWI_BASE + '.nii.gz'
     bdpObj.inputs.BVecBValPair = [ INPUT_DWI_BASE + '.bvec' , INPUT_DWI_BASE + '.bval' ]
-    bdpObj.inputs.outputSubdir = "DWI"
+    bdpObj.inputs.outputSubdir = BDP_BASE_DIRECTORY
     #svreg inputs that will be created. We delay execution of SVReg until all CSE and datasink are done
     svregObj.inputs.subjectFilePrefix = svregInputBase
        
@@ -406,7 +407,7 @@ def runWorkflow():
     
     #BDP COMMAND: volblend -i DWI/2523412.dwi.RAS.nii.gz -o ~/public_html/test.png --view 3 --slice 60
     #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
-    updateStatusFile(bdpInputBase + '.dwi.RAS.nii.gz', None, STATUS_FILEPATH, 12, PUBLIC)
+    updateStatusFile(WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + BDP_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w.dwi.RAS.nii.gz', None, STATUS_FILEPATH, 12, PUBLIC)
     updateStatusFile(svregInputBase + '.right.pial.cortex.svreg.dfs', None, STATUS_FILEPATH, 13, PUBLIC)
 
     #Print message when all processing is complete.
