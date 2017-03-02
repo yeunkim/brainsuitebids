@@ -238,10 +238,10 @@
 
             $("#trayThumbnails").empty();
             for (var i = 0; i <= subjectState; i++) {
+                var divToAdd = $("<div/>");
                 var imgToAdd = $("<img/>");
                 imgToAdd.attr("src", makeThumbnailURL(subjectIndex, i));
                 imgToAdd.attr("title", SHORT_NAMES[i]); 
-                imgToAdd.attr("width", (100 * 1 / PROCESS_NAMES.length) + "%");
                 imgToAdd.attr("imgStepNum", i);
                 imgToAdd.attr("imgSubjectIndex", selectedSubjectIndex);
                 imgToAdd.css("cursor", "pointer");
@@ -254,7 +254,23 @@
                     $("#trayDialog").dialog("open");
                 });
 
-                $("#trayThumbnails").append(imgToAdd);
+                //$("#trayThumbnails").append(imgToAdd);
+                $("#trayThumbnails").append(divToAdd);
+                divToAdd.append(imgToAdd);
+                divToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
+                divToAdd.css("display", "inline-block");
+                imgToAdd.css("border", "1px solid red");
+                if(i % 2 == 1){
+                    imgToAdd.css("border", "1px solid green");
+
+                }
+                imgToAdd.width("97%");
+                imgToAdd.height(imgToAdd.width());
+
+                addErrorBar(divToAdd, .5);
+
+                //imgToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
+                //imgToAdd.outerHeight($(imgToAdd).width());
             }
         }
 
@@ -316,8 +332,8 @@
         }
 
         function updateImages(newStates){
-            loadSubjTray(selectedSubjectIndex);
             var maxState = $("#slider_showstage").slider("option", "value");
+            loadSubjTray(selectedSubjectIndex);
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 {
                     var statePct = 0;
@@ -381,6 +397,52 @@
             });
         }
 
+        //addTo is jquery object
+        function addErrorBar(addTo, zScore){
+            var c = $("<canvas/>")
+            var cWidth = addTo.width()
+            var cHeight = cWidth * .25;
+            c.attr("width", cWidth);
+            c.attr("height", cHeight);
+            c.css("height", cHeight);
+            c.css("width", cWidth);
+            
+            var barPercent = .9;
+            var barLength = cWidth * barPercent;
+            var barStart = (1 - barPercent) / 2 * cWidth;
+            var barEnd = barStart + barLength;
+            var barMid = (barEnd + barStart) / 2;
+            var barY = cHeight / 2;
+
+            var ctx = c.get(0).getContext("2d");
+            ctx.strokeStyle="#000080";
+            ctx.beginPath();
+            ctx.moveTo(barStart, barY);
+            ctx.lineTo(barEnd, barY);
+            
+
+            var verticalHeight = .2 * cHeight;
+            var midHeight = .5 * verticalHeight;
+            //Left
+            ctx.moveTo(barStart, barY - verticalHeight);
+            ctx.lineTo(barStart, barY + verticalHeight);
+
+            //Center
+            ctx.moveTo(barMid, barY - midHeight);
+            ctx.lineTo(barMid, barY + midHeight);
+                
+            //Right
+            ctx.moveTo(barEnd, barY - verticalHeight);
+            ctx.lineTo(barEnd, barY + verticalHeight);
+            ctx.stroke();
+
+            ctx.fillStyle="#4c1d87";
+            var rectHeight = .25 * cHeight;
+            ctx.fillRect( barMid + (zScore * barLength/2) - rectHeight/2, barY - rectHeight/2, rectHeight, rectHeight );
+
+            addTo.prepend(c);
+        }
+
         function startTimer() {
             setInterval(scanJSON, 1000);
             setStatus("initializing images");
@@ -434,8 +496,6 @@
             $("#showHelp").click(function(){
                 $("#help").toggle("blind", {}, 500);
             });
-            
-            
 
             startTimer();
         });
@@ -510,7 +570,6 @@
                 </p>
             </div>
         </div>
-
         <div id="tray" class="roundrect" style="margin-right:px">
             <div id="trayStatus">
                 <!-- Load with loadSubjTray -->
@@ -518,7 +577,7 @@
             <div id="trayDialog" title="Statistics Report">
                 <!-- Update with onclick of each image in subject tray -->
             </div>
-            <div id="trayThumbnails">
+            <div id="trayThumbnails"> 
                 <!-- Load with loadSubjTray -->
             </div>
 
