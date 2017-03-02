@@ -9,7 +9,8 @@
     <style type="text/css">
         .subjtext {
             font-size: 12px;
-            font-family: "Gill Sans", "Lucida Grande", Lucida, Verdana, sans-serif;
+            word-break: break-all;
+            width: 120px;
             color: #000000;
         }
 
@@ -188,7 +189,7 @@
                 galleryHTML +=
                     `<li id="li${i}" style="border:2px solid black;">
                         <img id="img${i}" height="128px" style="cursor: pointer;" onclick="loadSubjTray(${i})" />
-                        <div class="subjtext" id="text${i}">${subjects[i]}<br>Initializing</div>
+                        <p class="subjtext" id="text${i}">${subjects[i]}<br>Initializing</p>
                         <div class="progressbar">
                             <div class="progressCompleted" id="progress${i}">
                                 <div class="progressShown" id="progressShown${i}"></div>
@@ -267,7 +268,7 @@
                 imgToAdd.width("97%");
                 imgToAdd.height(imgToAdd.width());
 
-                addErrorBar(divToAdd, .5);
+                addErrorBar(divToAdd, 2.9);
 
                 //imgToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
                 //imgToAdd.outerHeight($(imgToAdd).width());
@@ -396,12 +397,24 @@
                 }
             });
         }
+        
+        //Height is half of total height
+        function drawVertical(ctx, x, y, height){
+            ctx.moveTo(x, y - height);
+            ctx.lineTo(x, y + height);
+            ctx.stroke();
+        }
 
         //addTo is jquery object
         function addErrorBar(addTo, zScore){
+            var zCeil = Math.ceil(Math.abs(zScore));
+            if(zScore === 0){
+                zCeil++;
+            }
+
             var c = $("<canvas/>")
             var cWidth = addTo.width()
-            var cHeight = cWidth * .25;
+            var cHeight = cWidth * .5
             c.attr("width", cWidth);
             c.attr("height", cHeight);
             c.css("height", cHeight);
@@ -412,33 +425,43 @@
             var barStart = (1 - barPercent) / 2 * cWidth;
             var barEnd = barStart + barLength;
             var barMid = (barEnd + barStart) / 2;
-            var barY = cHeight / 2;
+            var barY = cHeight * .75;
 
             var ctx = c.get(0).getContext("2d");
-            ctx.strokeStyle="#000080";
+            ctx.strokeStyle = "white";
+            ctx.fillStyle = "white";
+            ctx.font = "12px Calibri"; //fallback for no view width support
+            ctx.font = "1vw Calibri";
             ctx.beginPath();
             ctx.moveTo(barStart, barY);
             ctx.lineTo(barEnd, barY);
             
 
             var verticalHeight = .2 * cHeight;
-            var midHeight = .5 * verticalHeight;
+            var midHeight = .75 * verticalHeight;
             //Left
-            ctx.moveTo(barStart, barY - verticalHeight);
-            ctx.lineTo(barStart, barY + verticalHeight);
+            ctx.fillText("-" + zCeil + "s", barStart, barY - verticalHeight);
+            drawVertical(ctx, barStart, barY, verticalHeight);
 
             //Center
-            ctx.moveTo(barMid, barY - midHeight);
-            ctx.lineTo(barMid, barY + midHeight);
+            drawVertical(ctx, barMid, barY, midHeight);
                 
             //Right
-            ctx.moveTo(barEnd, barY - verticalHeight);
-            ctx.lineTo(barEnd, barY + verticalHeight);
-            ctx.stroke();
+            ctx.fillText("+" + zCeil + "s", barEnd - ctx.measureText("+1s").width, barY - verticalHeight);
+            drawVertical(ctx, barEnd, barY, verticalHeight);
 
-            ctx.fillStyle="#4c1d87";
-            var rectHeight = .25 * cHeight;
-            ctx.fillRect( barMid + (zScore * barLength/2) - rectHeight/2, barY - rectHeight/2, rectHeight, rectHeight );
+            var boxColor;
+            if(zCeil == 1){
+                boxColor = "green";
+            }else if(zCeil == 2){
+                boxColor = "yellow";
+            }else{
+                boxColor = "red";
+            }
+
+            ctx.fillStyle = boxColor;
+            var rectHeight = .2 * cHeight;
+            ctx.fillRect( barMid + (zScore/zCeil * barLength/2) - rectHeight/2, barY - rectHeight/2, rectHeight, rectHeight );
 
             addTo.prepend(c);
         }
