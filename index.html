@@ -2,7 +2,7 @@
 
 
 <head>
-    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" rel="stylesheet" type="text/css"/>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js" type="text/javascript"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js" type="text/javascript"></script>
 
@@ -248,7 +248,7 @@
                 imgToAdd.css("cursor", "pointer");
                 
                 $(imgToAdd).on("click", function(){
-                    $("#trayDialog").load(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")));
+                    $("#trayDialogText").load(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")));
                     //$("#trayDialog").html($(this).attr("imgStepNum"));
                     $("#trayDialog").dialog("option", "width", $(window).width() * 0.60);
                     $("#trayDialog").dialog("option", "height", $(window).height() * 0.35);
@@ -598,7 +598,9 @@
                 <!-- Load with loadSubjTray -->
             </div>
             <div id="trayDialog" title="Statistics Report">
-                <!-- Update with onclick of each image in subject tray -->
+                <pre id="trayDialogText">
+                    <!-- Update with onclick of each image in subject tray -->
+                </pre>
             </div>
             <div id="trayThumbnails"> 
                 <!-- Load with loadSubjTray -->
