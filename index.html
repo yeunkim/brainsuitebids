@@ -103,6 +103,8 @@
     <script type="text/javascript">
         var BASE_URL = "";
         var JSON_PATH = "/brainsuite_state.json";
+        var STATS_JSON_PATH = "/statistics_base.json";
+        var STATS_JSON;
         const PROCESS_NAMES = 
             ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
              "cerebrum masking", "initial cortex masking", "mask scrubbing",
@@ -143,9 +145,21 @@
             var docURL = document.URL.toString();
             BASE_URL = docURL.substring(0, docURL.lastIndexOf("/"));
             JSON_PATH = BASE_URL + JSON_PATH;
+            STATS_JSON_PATH = BASE_URL + STATS_JSON_PATH;
         }
 
         function initFromJSON(){
+            $.ajax({
+                cache: false,
+                url: STATS_JSON_PATH,
+                dataType: "json",
+                async: false,
+                success: function(json){
+                    STATS_JSON = json;
+                }
+            });
+
+
             $.ajax({
                 cache: false,
                 url: JSON_PATH,
@@ -181,6 +195,7 @@
                 }
             });
 
+
         }
 
         function initGallery(){
@@ -198,10 +213,24 @@
                     </li>
                     `
             }
-        $("#gallery").html(galleryHTML);
+            $("#gallery").html(galleryHTML);
         }
 
+        function doStats(state, currStat, divToUpdate, imgToBorder){
+            var zScore;
+            
+            zScore = currStat;
 
+            if(zScore <= 1){
+                imgToBorder.css("border", "1px solid green");
+            }else if(zScore <= 2){
+                imgToBorder.css("border", "1px solid yellow");
+            }else{
+                imgToBorder.css("border", "1px solid red");
+            }
+            
+            addErrorBar(divToUpdate, zScore);
+        }
         /**
          *
          * @param id Pass in INDEX of selected subject
@@ -248,7 +277,11 @@
                 imgToAdd.css("cursor", "pointer");
                 
                 $(imgToAdd).on("click", function(){
-                    $("#trayDialogText").load(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")));
+                    //$("#trayDialogText").load(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")));
+                    $.get(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")), function(data){
+                        $("#trayDialogText").html(data.substr(5,10));
+                    });
+
                     //$("#trayDialog").html($(this).attr("imgStepNum"));
                     $("#trayDialog").dialog("option", "width", $(window).width() * 0.60);
                     $("#trayDialog").dialog("option", "height", $(window).height() * 0.35);
@@ -260,15 +293,37 @@
                 divToAdd.append(imgToAdd);
                 divToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
                 divToAdd.css("display", "inline-block");
-                imgToAdd.css("border", "1px solid red");
-                if(i % 2 == 1){
-                    imgToAdd.css("border", "1px solid green");
-
-                }
                 imgToAdd.width("97%");
                 imgToAdd.height(imgToAdd.width());
 
-                addErrorBar(divToAdd, 2.9);
+                $.ajax({
+                    cache:false,
+                    url: makeStatsURL(selectedSubjectIndex, i),
+                    dataType: "text",
+                    async: false,
+                    success: function(text){
+                        doStats(i, text.split("\n")[0], divToAdd, imgToAdd);
+                    }
+                });
+/*
+
+            $.ajax({
+                cache: false,
+                url: STATS_JSON_PATH,
+                dataType: "json",
+                async: false,
+                success: function(json){
+                    STATS_JSON = json;
+                }
+            });
+
+
+                $.get(, function(data){
+                    doStats(i, data.split("\n")[0], divToAdd, imgToBorder);
+                });
+
+*/
+                //addErrorBar(divToAdd, .4);
 
                 //imgToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
                 //imgToAdd.outerHeight($(imgToAdd).width());
