@@ -141,6 +141,8 @@
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
 
+        var statsCache = [];
+
         function initPaths(){
             var docURL = document.URL.toString();
             BASE_URL = docURL.substring(0, docURL.lastIndexOf("/"));
@@ -164,6 +166,7 @@
                 cache: false,
                 url: JSON_PATH,
                 dataType: "json",
+                async: false,
                 success: function (json) {
                     ajaxLock = true;
                     if (json) {
@@ -180,6 +183,14 @@
                                 subjects.push(json.subjects[i].name);
                                 subjectStates.push(-1);
                             }
+                            //Stats cache
+                            for(var i = 0 ; i < Object(json.subjects).length; i++){
+                                statsCache.push(new Array());
+                                for(var x = 0 ; x < PROCESS_NAMES.length ; x++){
+                                    statsCache[i].push(undefined);
+                                }
+                            }
+
                             setSubjectCount(subjects.length);
                             setShowStage(DEFAULT_SHOWSTAGE);
                             setThumbSize(DEFAULT_THUMB_SIZE);
@@ -220,10 +231,11 @@
             var zScore;
             
             zScore = currStat;
+            var zScoreAbs = Math.abs(zScore);
 
-            if(zScore <= 1){
+            if(zScoreAbs<= 1){
                 imgToBorder.css("border", "1px solid green");
-            }else if(zScore <= 2){
+            }else if(zScoreAbs <= 2){
                 imgToBorder.css("border", "1px solid yellow");
             }else{
                 imgToBorder.css("border", "1px solid red");
@@ -296,15 +308,23 @@
                 imgToAdd.width("97%");
                 imgToAdd.height(imgToAdd.width());
 
-                $.ajax({
-                    cache:false,
-                    url: makeStatsURL(selectedSubjectIndex, i),
-                    dataType: "text",
-                    async: false,
-                    success: function(text){
-                        doStats(i, text.split("\n")[0], divToAdd, imgToAdd);
-                    }
-                });
+                if(statsCache[selectedSubjectIndex][i] === undefined){
+                    $.ajax({
+                        cache:false,
+                        url: makeStatsURL(selectedSubjectIndex, i),
+                        dataType: "text",
+                        async: false,
+                        success: function(text){
+                            statsCache[selectedSubjectIndex][i] = text.split("\n")[0];
+                        }
+                    });
+                }
+                
+                doStats(i, statsCache[selectedSubjectIndex][i], divToAdd, imgToAdd);
+
+            }
+        }
+
 /*
 
             $.ajax({
@@ -327,9 +347,6 @@
 
                 //imgToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
                 //imgToAdd.outerHeight($(imgToAdd).width());
-            }
-        }
-
 
         function setStatus(statusString) {
             $("#status").html(statusString);
@@ -389,7 +406,6 @@
 
         function updateImages(newStates){
             var maxState = $("#slider_showstage").slider("option", "value");
-            loadSubjTray(selectedSubjectIndex);
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
                 {
                     var statePct = 0;
@@ -400,6 +416,11 @@
 
                     if (newState != subjectStates[subjectIndex]) {
                         subjectStates[subjectIndex] = newState;
+
+                        if(subjectIndex == selectedSubjectIndex){
+                            loadSubjTray(selectedSubjectIndex);
+                        }
+
                         
                         document.getElementById("text" + subjectIndex).innerHTML = subjects[subjectIndex] + "<br/>" + SHORT_NAMES[newState];
                         
@@ -460,6 +481,12 @@
             ctx.stroke();
         }
 
+        function drawUp(ctx, x, y, height){
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y - height);
+            ctx.stroke();
+        }
+
         //addTo is jquery object
         function addErrorBar(addTo, zScore){
             var zCeil = Math.ceil(Math.abs(zScore));
@@ -480,33 +507,40 @@
             var barStart = (1 - barPercent) / 2 * cWidth;
             var barEnd = barStart + barLength;
             var barMid = (barEnd + barStart) / 2;
-            var barY = cHeight * .75;
-
+            var barY = cHeight * .7; 
             var ctx = c.get(0).getContext("2d");
             ctx.strokeStyle = "white";
             ctx.fillStyle = "white";
             ctx.font = "12px Calibri"; //fallback for no view width support
-            ctx.font = "1vw Calibri";
+            ctx.font = ".7vw Calibri";
             ctx.beginPath();
             ctx.moveTo(barStart, barY);
             ctx.lineTo(barEnd, barY);
+
             
+            var stdevToDraw = 3;
+            var linesToDraw = stdevToDraw * 2 + 1;
+            for(var i = 0 ; i < linesToDraw ; i++){
+                var distCenter = Math.abs(i - stdevToDraw);
 
-            var verticalHeight = .2 * cHeight;
-            var midHeight = .75 * verticalHeight;
-            //Left
-            ctx.fillText("-" + zCeil + "s", barStart, barY - verticalHeight);
-            drawVertical(ctx, barStart, barY, verticalHeight);
+                if(distCenter == 0){
+                    upHeight = cHeight * .7;
+                }else if(distCenter == 1){
+                    upHeight = cHeight * .4;
+                }else if(distCenter == 2){
+                    upHeight = cHeight * .2;
+                }else{
+                    upHeight = cHeight * .1;
+                }
 
-            //Center
-            drawVertical(ctx, barMid, barY, midHeight);
-                
-            //Right
-            ctx.fillText("+" + zCeil + "s", barEnd - ctx.measureText("+1s").width, barY - verticalHeight);
-            drawVertical(ctx, barEnd, barY, verticalHeight);
+                drawUp(ctx, barStart + i / (linesToDraw - 1) * barLength, barY, upHeight);
+            }
 
+            ctx.fillText("-3s", barStart - ctx.measureText("-").width, barY + .2 * cHeight);
+            ctx.fillText("+3s", barEnd - ctx.measureText("+3").width, barY + .2 * cHeight);
+            
             var boxColor;
-            if(zCeil == 1){
+            if(zCeil == 1 || zScore == 0){
                 boxColor = "green";
             }else if(zCeil == 2){
                 boxColor = "yellow";
@@ -515,8 +549,8 @@
             }
 
             ctx.fillStyle = boxColor;
-            var rectHeight = .2 * cHeight;
-            ctx.fillRect( barMid + (zScore/zCeil * barLength/2) - rectHeight/2, barY - rectHeight/2, rectHeight, rectHeight );
+            var rectHeight = .15 * cHeight;
+            ctx.fillRect( barMid + (zScore/stdevToDraw * barLength/2) - rectHeight/2, barY - rectHeight/2, rectHeight, rectHeight );
 
             addTo.prepend(c);
         }
@@ -550,8 +584,14 @@
                 var viewportWidth = $(window).width();
                 var viewPortHeight = $(window).height();
                 var imageport = document.getElementById("images");
-                if (imageport)
+                if (imageport){
                     imageport.style.height = (viewPortHeight - 400) + "px";
+                }
+
+                clearTimeout(window.resizeDone);
+                window.resizeDone = setTimeout(function(){
+                    loadSubjTray(selectedSubjectIndex);
+                }, 100);
             });
             
             initPaths();
