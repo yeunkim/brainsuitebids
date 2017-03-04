@@ -90,6 +90,13 @@
             float:right;
         }
 
+        .dialogRight {
+            display: inline-block;
+            vertical-align: top;
+            float: left;
+            padding-left: 5%;
+        }
+
     </style>
 
     <title>BrainSuite Surface Extraction & Labeling</title>
@@ -227,7 +234,7 @@
             $("#gallery").html(galleryHTML);
         }
 
-        function doStats(state, currStat, divToUpdate, imgToBorder){
+        function doStats(state, currStat, divToUpdate, imgToBorder, errorBarColor){
             var zScore;
             
             zScore = currStat;
@@ -241,8 +248,137 @@
                 imgToBorder.css("border", "1px solid red");
             }
             
-            addErrorBar(divToUpdate, zScore);
+            addErrorBar(divToUpdate, zScore, errorBarColor);
         }
+
+        function stat_addImg(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, addErrorbar){
+            var dialogDiv = $("<div/>");
+            dialogDiv.css("display", "inline-block");
+            dialogDiv.css("float", "left");
+            $("#trayDialog").empty();
+            $("#trayDialog").append(dialogDiv);
+            dialogDiv.width(.3 * dialogWidth);
+            dialogDiv.height(dialogHeight);
+
+            var dialogImg = $("<img/>");
+            dialogImg.attr("src", thisPtr.attr("src"));
+
+            if(addErrorbar){
+                doStats(clickedStepNum, statsCache[clickedSubjectIndex][clickedStepNum], dialogDiv, dialogImg, "black");
+            }
+
+            dialogDiv.append(dialogImg);
+            dialogImg.width("100%");
+
+        }
+
+        function stat_none(thisPtr){
+            var dialogWidth = $("#trayDialog").dialog("option", "width");
+            var dialogHeight = $("#trayDialog").dialog("option", "height");
+
+            var clickedSubjectIndex = thisPtr.attr("imgSubjectIndex");
+            var clickedStepNum = thisPtr.attr("imgStepNum");
+
+            stat_addImg(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, false);
+            var dialogText;
+            $.ajax({
+                cache: false,
+                url: makeStatsURL(clickedSubjectIndex, clickedStepNum),
+                dataType: "text",
+                async: false,
+                success: function(text){
+                    dialogText = text;
+                }
+            });
+
+            var textDiv = $("<div/>").text(dialogText);
+            textDiv.attr("class", "dialogRight");
+            textDiv.width(.5 * dialogWidth);
+
+            $("#trayDialog").append(textDiv);
+        }
+
+        function stat_stdev(thisPtr){
+            var dialogWidth = $("#trayDialog").dialog("option", "width");
+            var dialogHeight = $("#trayDialog").dialog("option", "height");
+
+            var clickedSubjectIndex = thisPtr.attr("imgSubjectIndex");
+            var clickedStepNum = thisPtr.attr("imgStepNum");
+
+            stat_addImg(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, true);
+
+            var s_json;
+            $.ajax({
+                cache: false,
+                url: makeStatsURL(clickedSubjectIndex, clickedStepNum),
+                dataType: "json",
+                async: false,
+                success: function(json){
+                    s_json = json;
+                }
+            });
+
+            var dialogTable = $("<table/>");
+            dialogTable.attr("class", "dialogRight");
+            dialogTable.width(.5 * dialogWidth);
+            
+            var s_statisticName, s_description, s_stepAfter, s_units,
+                s_measuredValue, s_zScore, s_refDist, s_mean, s_stdev,
+                s_subjectID, s_session, s_demographic, s_fileOnDisk;
+            
+            s_statisticName = "Total Brain Volume";
+            s_description = "TBV is an indicator of proper skull stripping";
+            s_stepAfter = "BSE";
+            s_units = "cubic cm";
+            s_measuredValue = "921.31231";
+            s_refDist = "ICBM 1000";
+            s_mean = "900.132";
+            s_stdev = "230.41";
+            s_subjectID = "sub-1003";
+            s_session = "ses-predrug";
+            s_demographic = "50 year old asian male";
+            s_fileOnDisk = "/ifs/tmp/jowng/nii.gz";
+
+            s_zScore = parseFloat(s_measuredValue) - parseFloat(s_mean);
+            s_zScore /= parseFloat(s_stdev);
+            s_zScore = s_zScore.toFixed(5);
+
+            var statsData = [];
+            statsData.push(["Measured After", s_stepAfter]);
+            statsData.push(["Units", s_units]);
+            statsData.push(["Measured Value", s_measuredValue, true]);
+            statsData.push(["Mean", s_mean, true]);
+            statsData.push(["Standard Deviation", s_stdev, true]);
+            statsData.push(["Z-Score", s_zScore, true]);
+            statsData.push(["Reference Distribution", s_refDist]);
+            statsData.push(["Subject", s_subjectID]);
+            statsData.push(["Session", s_session]);
+            statsData.push(["Demographic", s_demographic]);
+            statsData.push(["File on disk", s_fileOnDisk]);
+
+
+            var topRow = $("<tr/>");
+            topRow.append($("<td/>").text(s_statisticName + ": " + s_description).attr("colspan", "100%"));
+            dialogTable.append(topRow);
+
+            for(var r = 0 ; r < statsData.length ; r++){
+                var rowToAdd = $("<tr/>");
+                if(statsData[r].length === 3){
+                    rowToAdd.css("font-weight", "bold");
+                }
+
+
+                for(var c = 0 ; c < 2 ; c++){
+                    rowToAdd.append($("<td/>").text(statsData[r][c]));
+                }
+                dialogTable.append(rowToAdd);
+            };
+            
+            
+            $("#trayDialog").append(dialogTable);
+
+        }
+
         /**
          *
          * @param id Pass in INDEX of selected subject
@@ -287,26 +423,12 @@
                 imgToAdd.attr("imgStepNum", i);
                 imgToAdd.attr("imgSubjectIndex", selectedSubjectIndex);
                 imgToAdd.css("cursor", "pointer");
-                
-                $(imgToAdd).on("click", function(){
-                    //$("#trayDialogText").load(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")));
-                    $.get(makeStatsURL($(this).attr("imgSubjectIndex"), $(this).attr("imgStepNum")), function(data){
-                        $("#trayDialogText").html(data.substr(5,10));
-                    });
 
-                    //$("#trayDialog").html($(this).attr("imgStepNum"));
-                    $("#trayDialog").dialog("option", "width", $(window).width() * 0.60);
-                    $("#trayDialog").dialog("option", "height", $(window).height() * 0.35);
-                    $("#trayDialog").dialog("open");
-                });
-
-                //$("#trayThumbnails").append(imgToAdd);
                 $("#trayThumbnails").append(divToAdd);
-                divToAdd.append(imgToAdd);
                 divToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
+                divToAdd.height(divToAdd.width() * 1.5);
                 divToAdd.css("display", "inline-block");
-                imgToAdd.width("97%");
-                imgToAdd.height(imgToAdd.width());
+                divToAdd.css("vertical-align", "bottom");
 
                 if(statsCache[selectedSubjectIndex][i] === undefined){
                     $.ajax({
@@ -320,33 +442,41 @@
                     });
                 }
                 
-                doStats(i, statsCache[selectedSubjectIndex][i], divToAdd, imgToAdd);
+                if(i == 1 || i == 3){
+                    doStats(i, statsCache[selectedSubjectIndex][i], divToAdd, imgToAdd, "white");
+                }else{
+                    //placeholder TODO clean up
+                    var c = $("<canvas/>")
+                    var cWidth = divToAdd.width();
+                    var cHeight = divToAdd.height() / 3;
+                    c.attr("width", cWidth);
+                    c.attr("height", cHeight);
+                    c.css("height", cHeight);
+                    c.css("width", cWidth);
+            
+                    divToAdd.prepend(c);
+                }
+                divToAdd.append(imgToAdd);
+                imgToAdd.width("97%");
+                imgToAdd.height(imgToAdd.width());
+                imgToAdd.css("bottom", "0");
 
+                $(imgToAdd).on("click", function(){
+                    $("#trayDialog").dialog("option", "width", $(window).width() * 0.5);
+                    $("#trayDialog").dialog("option", "height", $(window).height() * 0.5);
+                    
+                    var clickedStepNum = $(this).attr("imgStepNum");
+                    if(clickedStepNum == 1 || clickedStepNum == 3){
+                        stat_stdev($(this));
+                    }else{
+                        stat_none($(this));
+                    }
+
+                    
+                    $("#trayDialog").dialog("open");
+                });
             }
         }
-
-/*
-
-            $.ajax({
-                cache: false,
-                url: STATS_JSON_PATH,
-                dataType: "json",
-                async: false,
-                success: function(json){
-                    STATS_JSON = json;
-                }
-            });
-
-
-                $.get(, function(data){
-                    doStats(i, data.split("\n")[0], divToAdd, imgToBorder);
-                });
-
-*/
-                //addErrorBar(divToAdd, .4);
-
-                //imgToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
-                //imgToAdd.outerHeight($(imgToAdd).width());
 
         function setStatus(statusString) {
             $("#status").html(statusString);
@@ -488,15 +618,23 @@
         }
 
         //addTo is jquery object
-        function addErrorBar(addTo, zScore){
+        function addErrorBar(addTo, zScore, graphColor){
+            //zScore of 3 or more in either direction is displayed on 3 stdev mark
+            if(zScore > 3){
+                zScore = 3;
+            }
+            if(zScore < -3){
+                zScore = -3;
+            }
+
             var zCeil = Math.ceil(Math.abs(zScore));
             if(zScore === 0){
                 zCeil++;
             }
 
             var c = $("<canvas/>")
-            var cWidth = addTo.width()
-            var cHeight = cWidth * .5
+            var cWidth = addTo.width();
+            var cHeight = addTo.height() / 3;
             c.attr("width", cWidth);
             c.attr("height", cHeight);
             c.css("height", cHeight);
@@ -509,8 +647,8 @@
             var barMid = (barEnd + barStart) / 2;
             var barY = cHeight * .7; 
             var ctx = c.get(0).getContext("2d");
-            ctx.strokeStyle = "white";
-            ctx.fillStyle = "white";
+            ctx.strokeStyle = graphColor;
+            ctx.fillStyle = graphColor;
             ctx.font = "12px Calibri"; //fallback for no view width support
             ctx.font = ".7vw Calibri";
             ctx.beginPath();
@@ -537,6 +675,7 @@
             }
 
             ctx.fillText("-3s", barStart - ctx.measureText("-").width, barY + .2 * cHeight);
+            ctx.fillText("0s", barMid - ctx.measureText("-").width, barY + .2 * cHeight);
             ctx.fillText("+3s", barEnd - ctx.measureText("+3").width, barY + .2 * cHeight);
             
             var boxColor;
@@ -549,7 +688,7 @@
             }
 
             ctx.fillStyle = boxColor;
-            var rectHeight = .15 * cHeight;
+            var rectHeight = .15 * Math.min(cHeight, cWidth);
             ctx.fillRect( barMid + (zScore/stdevToDraw * barLength/2) - rectHeight/2, barY - rectHeight/2, rectHeight, rectHeight );
 
             addTo.prepend(c);
@@ -693,9 +832,6 @@
                 <!-- Load with loadSubjTray -->
             </div>
             <div id="trayDialog" title="Statistics Report">
-                <pre id="trayDialogText">
-                    <!-- Update with onclick of each image in subject tray -->
-                </pre>
             </div>
             <div id="trayThumbnails"> 
                 <!-- Load with loadSubjTray -->
