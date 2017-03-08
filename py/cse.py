@@ -64,7 +64,7 @@ RUNTIME_EXCEPTION_CODE = -5 #Update statusFile with this code to indicate runtim
 
 WORKFLOW_SUCCESS = 0
 
-def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
+def updateStatusFile(connectFile, secondaryFile, statsFiles, statusPath, status, public):
     """
     To be used as a Nipype function interface
     :param connectFile: Should be from an in node to this function call. Ie, should come from the step that we are reporting completion on
@@ -97,9 +97,11 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
                        ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
                        ".pial.cortex.png", ".left.png", ".bdp.png", ".svreg.png"]
 
-    STATS_SUFFIX = ["-mri.txt", "-bse.txt", "-bfc.txt", "-pvc.txt", "-cerebro.txt", "-cortex.txt",
-                          "-scrubmask.txt", "-tca.txt", "-dewisp.txt", "-dfs.txt", "-pialmesh.txt",
-                          "-hemisplit.txt", "-bdp.txt", "-svreg.txt"]
+    STATS_EXECUTABLES = [None, "voxelCount", None, "tissueFrac", None, None, None, None, None, None, None, None, None, None]
+    
+    STATS_SUFFIX = ["-mri.json", "-bse.json", "-bfc.json", "-pvc.json", "-cerebro.json", "-cortex.json",
+                          "-scrubmask.json", "-tca.json", "-dewisp.json", "-dfs.json", "-pialmesh.json",
+                          "-hemisplit.json", "-bdp.json", "-svreg.json"]
 
     subject_id = os.path.basename(os.path.dirname(statusPath))
 
@@ -142,9 +144,13 @@ def updateStatusFile(connectFile, secondaryFile, statusPath, status, public):
     #TODO: Error check. What behavior if png render failure?
     renderReturnValue = os.system(thumbnailCommand)
     
-    stepName = ((STATS_SUFFIX[status]).split("-")[1]).split(".txt")[0]
-    #TODO: Change redirection to >
-    statsCommand = ("echo -e 'This is a temporary testing stats printout:\nViewing statistics after %s\nGenerated from file %s\nTODO: Edit py/cse.py to call a shell executable to generate stats on the above file\n' >> %s") % (stepName, connectFile, outputStatsFile)
+    stepName = ((STATS_SUFFIX[status]).split("-")[1]).split(".json")[0]
+    
+    if STATS_EXECUTABLES[status] is not None:
+        statsCommand = ("%s -i %s --json >> %s") % (STATS_EXECUTABLES[status], statsFiles, outputStatsFile)
+    else:
+        tempText = ('{"text": "Statistics currently unavailable for stage %s. Viewing thumbnail generated from %s."}') % (stepName, connectFile)
+        statsCommand = ("echo -e '%s' >> %s") % (tempText, outputStatsFile)
 
     statsReturnValue = os.system(statsCommand)
 
@@ -206,11 +212,6 @@ def runWorkflow():
     :return:
     """
 
-    #Wrapper function for updating status file. Connect it to all interfaces.
-    #updateStatusWrapper = Function(input_names=["placeholder"], output_names=["out"], function=updateStatusFile)
-    #updateStatusWrapper.inputs.placeholder = 0
-
-
     brainsuite_workflow = pe.Workflow(name=WORKFLOW_NAME)
     brainsuite_workflow.base_dir=WORKFLOW_BASE_DIRECTORY
 
@@ -249,43 +250,41 @@ def runWorkflow():
     svregObj.inputs.subjectFilePrefix = svregInputBase
        
 
-    #Changes from default settings
-    bseObj.inputs.diffusionConstant = 15 #-d
-    bseObj.inputs.edgeDetectionConstant = 0.75 #-s
 
-    bfcObj.inputs.histogramType = "ellipse" #--ellipse
+    #NEW PARAMETERS
 
-    pvcObj.inputs.spatialPrior = 0.1 #-l
+    bseObj.inputs.diffusionIterations = 5
+    bseObj.inputs.diffusionConstant = 30 #-d
+    bseObj.inputs.edgeDetectionConstant = 0.78 #-s
 
-    cortexObj.inputs.includeAllSubcorticalAreas = False #turn off the default -a
+    cerebroObj.inputs.useCentroids = True
+    pialmeshObj.inputs.tissueThreshold = 0.3
+    #END NEW PARAMETER
 
-    #Not changing DFS
-    #Not changing pialmesh
-    #End changes from default
 
 
     bseDoneWrapper = pe.Node(name="BSE_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     bfcDoneWrapper = pe.Node(name="BFC_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     pvcDoneWrapper = pe.Node(name="PVC_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     cerebroDoneWrapper = pe.Node(name="CEREBRO_DONE_WRAPPER",
-                                 interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                                 interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     cortexDoneWrapper = pe.Node(name="CORTEX_DONE_WRAPPER",
-                                interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                                interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     scrubmaskDoneWrapper = pe.Node(name="SCRUBMASK_DONE_WRAPPER",
-                                   interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                                   interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     tcaDoneWrapper = pe.Node(name="TCA_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     dewispDoneWrapper = pe.Node(name="DEWISP_DONE_WRAPPER",
-                                interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                                interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     dfsDoneWrapper = pe.Node(name="DFS_DONE_WRAPPER",
-                             interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                             interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     pialmeshDoneWrapper = pe.Node(name="PIALMESH_DONE_WRAPPER",
-                                 interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                                 interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     hemisplitDoneWrapper = pe.Node(name="HEMISPLIT_DONE_WRAPPER",
-                                   interface=Function(input_names=["connectFile", "secondaryFile", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
+                                   interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     
 
     bseDoneWrapper.inputs.statusPath = STATUS_FILEPATH
@@ -331,50 +330,62 @@ def runWorkflow():
     brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bfcObj, 'inputMRIFile')
     bseDoneWrapper.inputs.connectFile = INPUT_MRI_FILE
     brainsuite_workflow.connect(bseObj, 'outputMaskFile', bseDoneWrapper, 'secondaryFile')
+    brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bseDoneWrapper, 'statsFiles')
     
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', pvcObj, 'inputMRIFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', bfcDoneWrapper, 'connectFile')
     bfcDoneWrapper.inputs.secondaryFile = None
+    bfcDoneWrapper.inputs.statsFiles = None
     
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', cortexObj, 'inputTissueFractionFile')
     brainsuite_workflow.connect(pvcObj, 'outputLabelFile', pvcDoneWrapper, 'connectFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', pvcDoneWrapper, 'secondaryFile')
+    brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', pvcDoneWrapper, 'statsFiles')
 
 
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', cerebroObj, 'inputMRIFile')
     brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', cortexObj, 'inputHemisphereLabelFile')
     brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', cerebroDoneWrapper, 'connectFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', cerebroDoneWrapper, 'secondaryFile')
+    cerebroDoneWrapper.inputs.statsFiles = None
 
     brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', scrubmaskObj, 'inputMaskFile')
     brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', cortexDoneWrapper, 'connectFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', cortexDoneWrapper, 'secondaryFile')
+    cortexDoneWrapper.inputs.statsFiles = None
 
     brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', scrubmaskDoneWrapper, 'connectFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', scrubmaskDoneWrapper, 'secondaryFile')
+    scrubmaskDoneWrapper.inputs.statsFiles = None
+
     brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', tcaObj, 'inputMaskFile')
     brainsuite_workflow.connect(tcaObj, 'outputMaskFile', dewispObj, 'inputMaskFile')
     brainsuite_workflow.connect(tcaObj, 'outputMaskFile', tcaDoneWrapper, 'connectFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', tcaDoneWrapper, 'secondaryFile')
+    tcaDoneWrapper.inputs.statsFiles = None
 
     brainsuite_workflow.connect(dewispObj, 'outputMaskFile', dfsObj, 'inputVolumeFile')
     brainsuite_workflow.connect(dewispObj, 'outputMaskFile', dewispDoneWrapper, 'connectFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', dewispDoneWrapper, 'secondaryFile')
+    dewispDoneWrapper.inputs.statsFiles = None
 
     brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', pialmeshObj, 'inputSurfaceFile')
     brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', dfsDoneWrapper, 'connectFile')
     dfsDoneWrapper.inputs.secondaryFile = None
+    dfsDoneWrapper.inputs.statsFiles = None
 
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', pialmeshObj, 'inputTissueFractionFile')
     brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', pialmeshObj, 'inputMaskFile')
     brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', hemisplitObj, 'pialSurfaceFile')
     brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', pialmeshDoneWrapper, 'connectFile')
     pialmeshDoneWrapper.inputs.secondaryFile = None
+    pialmeshDoneWrapper.inputs.statsFiles = None
 
     brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', hemisplitObj, 'inputSurfaceFile')
     brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', hemisplitObj, 'inputHemisphereLabelFile')
     brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', hemisplitDoneWrapper, 'connectFile')
     hemisplitDoneWrapper.inputs.secondaryFile = None
+    hemisplitDoneWrapper.inputs.statsFiles = None
     
     ds = pe.Node(io.DataSink(), name='DATASINK')
     ds.inputs.base_directory = WORKFLOW_BASE_DIRECTORY
@@ -407,8 +418,8 @@ def runWorkflow():
     
     #BDP COMMAND: volblend -i DWI/2523412.dwi.RAS.nii.gz -o ~/public_html/test.png --view 3 --slice 60
     #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
-    updateStatusFile(WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + BDP_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w.dwi.RAS.nii.gz', None, STATUS_FILEPATH, 12, PUBLIC)
-    updateStatusFile(svregInputBase + '.right.pial.cortex.svreg.dfs', None, STATUS_FILEPATH, 13, PUBLIC)
+    updateStatusFile(WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + BDP_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w.dwi.RAS.nii.gz', None, None, STATUS_FILEPATH, 12, PUBLIC)
+    updateStatusFile(svregInputBase + '.right.pial.cortex.svreg.dfs', None, None, STATUS_FILEPATH, 13, PUBLIC)
 
     #Print message when all processing is complete.
     print('Processing for subject %s has completed. Nipype workflow is located at: %s' % (SUBJECT_ID, WORKFLOW_BASE_DIRECTORY))

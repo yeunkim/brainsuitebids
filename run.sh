@@ -114,7 +114,7 @@ initAndProcess () {
     volblend ${PNG_OPTIONS} -i ${dataFile} -o ${subjectThumbnailsBase}/${id}.png
     
     mkdir -p ${subjectStatsBase}
-    echo -e "File name: ${dataFile}\nOther statistics TODO" > ${subjectStatsBase}/${id}-mri.txt
+    echo -e "{\"text\": \"Viewing input MRI data, filename ${dataFile}\"}" > ${subjectStatsBase}/${id}-mri.json
 
     mkdir -p ${dataSinkTarget}
     cp ${dataFile} ${dataSinkTarget}
@@ -373,6 +373,7 @@ IFS=$OLD_IFS
 if [ $a_t -eq 0 ]
 then
     cp index.html ${PUBLIC}
+    cp icbm100_statistics.json ${PUBLIC}/statistics_base.json #TODO hardcoded
     python `dirname $0`/py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
 fi
 
