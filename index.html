@@ -237,7 +237,7 @@
         function doStats(state, zScore, divToUpdate, imgToBorder, errorBarColor){
             var zScoreAbs = Math.abs(zScore);
 
-            if(zScoreAbs<= 1){
+            if(zScoreAbs <= 1){
                 imgToBorder.css("border", "1px solid green");
             }else if(zScoreAbs <= 2){
                 imgToBorder.css("border", "1px solid yellow");
@@ -319,7 +319,7 @@
                     }
                     continue;
                 }
-                if(key === "stat_type"){
+                if(key === "stat_type" || key === "File on disk"){
                     continue;
                 }
                 var rowToAdd = $("<tr/>");
@@ -327,7 +327,7 @@
                 rowToAdd.append($("<td/>").text(s_json[key]));
                 dialogTable.append(rowToAdd)
             }
-            dialogTable.find("td").slice(0,2).css("border-bottom", "1pt solid black");
+            //dialogTable.find("td").slice(0,2).css("border-bottom", "1pt solid black");
 
 
             $("#trayDialog").append(dialogTable);
@@ -442,7 +442,7 @@
 
                 $(imgToAdd).on("click", function(){
                     $("#trayDialog").dialog("option", "width", $(window).width() * 0.5);
-                    $("#trayDialog").dialog("option", "height", $(window).height() * 0.5);
+                    $("#trayDialog").dialog("option", "height", $(window).height() * 0.7);
                     
                     var clickedStepNum = $(this).attr("imgStepNum");
                     if(clickedStepNum == 1 || clickedStepNum == 3){
@@ -516,7 +516,7 @@
         function updateImages(newStates){
             var maxState = $("#slider_showstage").slider("option", "value");
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
-                {
+                {   
                     var statePct = 0;
                     var newState = parseInt(newStates[subjectIndex].state);
                     if (newState > 0) {
