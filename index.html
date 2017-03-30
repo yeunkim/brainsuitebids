@@ -234,21 +234,21 @@
             $("#gallery").html(galleryHTML);
         }
 
-        function doStats(state, zScore, divToUpdate, imgToBorder, errorBarColor){
+        function doStats(state, zScore, divToUpdate, itemToBorder, errorBarColor){
             var zScoreAbs = Math.abs(zScore);
 
             if(zScoreAbs <= 1){
-                imgToBorder.css("border", "1px solid green");
+                itemToBorder.css("border", "1px solid green");
             }else if(zScoreAbs <= 2){
-                imgToBorder.css("border", "1px solid yellow");
+                itemToBorder.css("border", "1px solid yellow");
             }else{
-                imgToBorder.css("border", "1px solid red");
+                itemToBorder.css("border", "1px solid red");
             }
             
             addErrorBar(divToUpdate, zScore, errorBarColor);
         }
 
-        function dialog_addImage(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, addErrorbar){
+        function dialog_addLeft(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, addErrorbar){
             var dialogDiv = $("<div/>");
             dialogDiv.css("display", "inline-block");
             dialogDiv.css("float", "left");
@@ -260,12 +260,12 @@
             var dialogImg = $("<img/>");
             dialogImg.attr("src", thisPtr.attr("src"));
 
+            dialogDiv.append(dialogImg);
+            dialogImg.width("100%");
+
             if(addErrorbar){
                 doStats(clickedStepNum, statsCache[clickedSubjectIndex][clickedStepNum]["Values"][0]["Z-Score"], dialogDiv, dialogImg, "black");
             }
-
-            dialogDiv.append(dialogImg);
-            dialogImg.width("100%");
 
         }
 
@@ -276,7 +276,7 @@
             var clickedSubjectIndex = thisPtr.attr("imgSubjectIndex");
             var clickedStepNum = thisPtr.attr("imgStepNum");
 
-            dialog_addImage(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, false);
+            dialog_addLeft(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, false);
             var dialogText = statsCache[clickedSubjectIndex][clickedStepNum]["text"];
 
             var textDiv = $("<div/>").text(dialogText);
@@ -293,7 +293,7 @@
             var clickedSubjectIndex = thisPtr.attr("imgSubjectIndex");
             var clickedStepNum = thisPtr.attr("imgStepNum");
 
-            dialog_addImage(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, true);
+            dialog_addLeft(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, true);
 
             var s_json = statsCache[clickedSubjectIndex][clickedStepNum];
 
@@ -327,7 +327,6 @@
                 rowToAdd.append($("<td/>").text(s_json[key]));
                 dialogTable.append(rowToAdd)
             }
-            //dialogTable.find("td").slice(0,2).css("border-bottom", "1pt solid black");
 
 
             $("#trayDialog").append(dialogTable);
@@ -393,6 +392,10 @@
                 imgToAdd.attr("imgStepNum", i);
                 imgToAdd.attr("imgSubjectIndex", selectedSubjectIndex);
                 imgToAdd.css("cursor", "pointer");
+                
+                //Prevent stretching and fill background with black
+                imgToAdd.css("object-fit", "contain");
+                imgToAdd.css("background", "black");
 
                 $("#trayThumbnails").append(divToAdd);
                 divToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
@@ -442,7 +445,9 @@
 
                 $(imgToAdd).on("click", function(){
                     $("#trayDialog").dialog("option", "width", $(window).width() * 0.5);
-                    $("#trayDialog").dialog("option", "height", $(window).height() * 0.7);
+                    $("#trayDialog").dialog({height: "auto"});
+
+                    //$("#trayDialog").dialog("option", "height", $(window).height() * 0.7);
                     
                     var clickedStepNum = $(this).attr("imgStepNum");
                     if(clickedStepNum == 1 || clickedStepNum == 3){
@@ -613,7 +618,7 @@
 
             var c = $("<canvas/>")
             var cWidth = addTo.width();
-            var cHeight = addTo.height() / 3;
+            var cHeight = cWidth / 2;
             c.attr("width", cWidth);
             c.attr("height", cHeight);
             c.css("height", cHeight);
