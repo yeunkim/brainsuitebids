@@ -312,8 +312,13 @@
                         if(innerKey === "name"){
                             boldRow.append($("<th/>").text(currStatJSON[innerKey]).attr("colspan", "100%").css("background-color", "#CCC"));
                         }else{
-                            boldRow.append($("<td/>").text(innerKey));
-                            boldRow.append($("<td/>").text(currStatJSON[innerKey]));
+                            boldRow.append($("<td/>").text(innerKey)).attr("align", "center");
+                            //Handle rounding
+                            if(isFinite(currStatJSON[innerKey])){
+                                boldRow.append($("<td/>").text(Number(currStatJSON[innerKey]).toFixed(2)));
+                            }else{
+                                boldRow.append($("<td/>").text(currStatJSON[innerKey]));
+                            }
                         }
                         dialogTable.append(boldRow);
                     }
@@ -337,9 +342,9 @@
         */
         function computeZscore(ref, addTo){
             //TODO: hardcoded "all"
-            var mean = ref["all"]["mean"];
-            var stdev = ref["all"]["stdev"];
-            var measured = addTo["Measured Value"];
+            var mean = Number(ref["all"]["mean"]);
+            var stdev = Number(ref["all"]["stdev"]);
+            var measured = Number(addTo["Measured Value"]);
 
             var zScore = (measured - mean) / stdev;
 
