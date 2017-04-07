@@ -149,6 +149,7 @@
         var subjectStates = []; //Init from JSON. All initially -1
 
         var statsCache = [];
+        var demographics = [];
 
         function initPaths(){
             var docURL = document.URL.toString();
@@ -212,6 +213,22 @@
                     ajaxLock = false;
                 }
             });
+
+            for(var i = 0 ; i < subjects.length ; i++){
+                var demographicURL = makeDemographicsURL(i);
+                $.ajax({
+                    cache: false,
+                    url: demographicURL,
+                    dataType: "text",
+                    async: false,
+                    success: function (data) {
+                        demographics.push($.trim(data));
+                    }
+                });
+
+
+            }
+
 
 
         }
@@ -340,10 +357,11 @@
         /**
         Will handle adding mean stdev and zscore to the json 2nd parameter
         */
-        function computeZscore(ref, addTo){
-            //TODO: hardcoded "all"
-            var mean = Number(ref["all"]["mean"]);
-            var stdev = Number(ref["all"]["stdev"]);
+        function computeZscore(demographic, ref, addTo){
+            //TODO: hardcoded demographic
+
+            var mean = Number(ref[demographic]["mean"]);
+            var stdev = Number(ref[demographic]["stdev"]);
             var measured = Number(addTo["Measured Value"]);
 
             var zScore = (measured - mean) / stdev;
@@ -419,7 +437,7 @@
                                 for(var sIndex = 0 ; sIndex < json["Values"].length ; sIndex++){
                                     var stepAfter = json["Measured After"];
                                     var statName = json["Values"][sIndex]["name"];
-                                    computeZscore(STATS_JSON[stepAfter][statName], json["Values"][sIndex]);
+                                    computeZscore(demographics[selectedSubjectIndex], STATS_JSON[stepAfter][statName], json["Values"][sIndex]);
                                 }
                             }
 
@@ -493,6 +511,10 @@
                 return null;
             }
             return STATS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + STATS_SUFFIX[state];
+        }
+        
+        function makeDemographicsURL(subjectIndex){
+            return STATS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + "_demographics.txt";
         }
 
 

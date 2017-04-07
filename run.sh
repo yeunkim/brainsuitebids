@@ -75,6 +75,7 @@ initAndProcess () {
     id=$1
     dataFile=$2
     dwiBase=$3
+    demographics=$4
     
     if [ $a_t -eq 1 ]
     then
@@ -115,6 +116,7 @@ initAndProcess () {
     
     mkdir -p ${subjectStatsBase}
     echo -e "{\"text\": \"Viewing input MRI data, filename ${dataFile}\"}" > ${subjectStatsBase}/${id}-mri.json
+    echo $4 > ${subjectStatsBase}/${id}_demographics.txt
 
     mkdir -p ${dataSinkTarget}
     cp ${dataFile} ${dataSinkTarget}
@@ -307,7 +309,9 @@ fi
 #Parse subjects from PARTICIPANTS_FILE, make qsub calls
 readingHeader=1
 participantIndex=-1
-isMultiSession=0 #0:undetermined; 1:is multisession -1:not multisession.
+ageIndex=-1 #-1: no age provided. else will be col index
+sexIndex=-1 #-1: no sex provided. else will be col index
+isMultiSession=-1 #-1:undetermined; 1:is multisession 0:not multisession.
 subjectsAndSessionsFile=""
 OLD_IFS=$IFS
 IFS=$'\n'
@@ -319,10 +323,23 @@ do
         IFS=$'\t ' read -r -a header <<< ${line}
         for i in "${!header[@]}"
         do
-            if [ ${header[$i]} = "participant_id" ]
+            colHeader=`echo ${header[$i]} | tr '[:upper:]' '[:lower:]'`
+
+            if [ $colHeader = "participant_id" ]
             then
                 participantIndex=$i
             fi
+
+            if [ $colHeader = "age" ]
+            then
+                ageIndex=$i
+            fi
+
+            if [ $colHeader = "sex" ]
+            then
+                sexIndex=$i
+            fi
+
         done
         subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjectsAndSessions.txt
         rm -f ${subjectsAndSessionsFile}
@@ -332,15 +349,36 @@ do
         IFS=$'\t '
         read -r -a row <<< ${line}
         subjID=${row[$participantIndex]}
+        subjDemographics=""
+
+        if [ $ageIndex -eq -1 ] && [ $sexIndex -eq -1 ]
+        then
+            subjDemographics="all"
+        else
+            subjAge=""
+            subjSex=""
+            if [ $ageIndex -ne -1 ]
+            then
+                subjAge=${row[$ageIndex]}
+            fi
+
+            if [ $sexIndex -ne -1 ]
+            then
+                subjSex=`echo "${row[$sexIndex]}" | tr '[:upper:]' '[:lower:]'`
+            fi
+
+            subjDemographics="$subjAge""$subjSex"
+        fi
+
         
-        if [ $isMultiSession -eq 0 ]
+        if [ $isMultiSession -eq -1 ]
         then
             #If subject directory contains folder containing ses-
             if [[ $(ls ${ARG_DATASET}/${subjID} | grep ses-) ]]
             then
                 isMultiSession=1
             else
-                isMultiSession=-1
+                isMultiSession=0
             fi
         fi
         
@@ -356,14 +394,14 @@ do
                         subjectDataFile=${ARG_DATASET}/${subjID}/${s}/anat/${subjAndSesID}_T1w.nii.gz
                         subjectDwiBase=${ARG_DATASET}/${subjID}/${s}/dwi/${subjAndSesID}_dwi
 
-                        initAndProcess ${subjAndSesID} ${subjectDataFile} ${subjectDwiBase}
+                        initAndProcess ${subjAndSesID} ${subjectDataFile} ${subjectDwiBase} ${subjDemographics}
                     fi
                 done
             else
                 subjectDataFile=${ARG_DATASET}/${subjID}/anat/${subjID}_T1w.nii.gz
                 subjectDwiBase=${ARG_DATASET}/${subjID}/dwi/${subjID}_dwi
 
-                initAndProcess ${subjID} ${subjectDataFile} ${subjectDwiBase}
+                initAndProcess ${subjID} ${subjectDataFile} ${subjectDwiBase} ${subjDemographics}
             fi
         fi
     fi
