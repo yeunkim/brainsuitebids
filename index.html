@@ -358,7 +358,10 @@
         Will handle adding mean stdev and zscore to the json 2nd parameter
         */
         function computeZscore(demographic, ref, addTo){
-            //TODO: hardcoded demographic
+            //Handle unavailable stat types and default to general
+            if(!ref.hasOwnProperty(demographic)){
+                demographic = "all";
+            }
 
             var mean = Number(ref[demographic]["mean"]);
             var stdev = Number(ref[demographic]["stdev"]);

@@ -76,7 +76,7 @@ initAndProcess () {
     dataFile=$2
     dwiBase=$3
     demographics=$4
-    
+
     if [ $a_t -eq 1 ]
     then
         echo $dataFile
@@ -116,7 +116,7 @@ initAndProcess () {
     
     mkdir -p ${subjectStatsBase}
     echo -e "{\"text\": \"Viewing input MRI data, filename ${dataFile}\"}" > ${subjectStatsBase}/${id}-mri.json
-    echo $4 > ${subjectStatsBase}/${id}_demographics.txt
+    echo $demographics > ${subjectStatsBase}/${id}_demographics.txt
 
     mkdir -p ${dataSinkTarget}
     cp ${dataFile} ${dataSinkTarget}
@@ -360,6 +360,7 @@ do
             if [ $ageIndex -ne -1 ]
             then
                 subjAge=${row[$ageIndex]}
+                subjAge="$(((${subjAge%.*} / 10) * 10))" #Floor to 10's place
             fi
 
             if [ $sexIndex -ne -1 ]
