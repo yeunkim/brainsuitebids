@@ -131,8 +131,8 @@ def updateStatusFile(connectFile, secondaryFile, statsFiles, statusPath, status,
     else:
         if status == 12:
             #bdp
-            #BDP COMMAND: volblend -i DWI/2523412.dwi.RAS.nii.gz -o ~/public_html/test.png --view 3 --slice 60
-            thumbnailCommand = ("volblend %s -i %s -o %s") % (PNG_OPTIONS, connectFile, outputPNGFile)
+            #BDP COMMAND: volblend -i <T1w.nii.gz> -r DWI/<ID>_T1w.dwi.RAS.correct.FA.color.T1_coord.nii.gz -o <outfile> --view 3 --slice 60
+            thumbnailCommand = ("volblend %s -i %s -r %s -o %s") % (PNG_OPTIONS, secondaryFile, connectFile, outputPNGFile)
         elif status == 13:
             #svreg
             #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
@@ -416,9 +416,9 @@ def runWorkflow():
     
     brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
     
-    #BDP COMMAND: volblend -i DWI/2523412.dwi.RAS.nii.gz -o ~/public_html/test.png --view 3 --slice 60
+    #bdp command: volblend -i <t1w.nii.gz> -r dwi/<id>_t1w.dwi.ras.correct.fa.color.t1_coord.nii.gz -o <outfile> --view 3 --slice 60
     #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
-    updateStatusFile(WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + BDP_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w.dwi.RAS.nii.gz', None, None, STATUS_FILEPATH, 12, PUBLIC)
+    updateStatusFile(WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + BDP_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w.dwi.RAS.correct.FA.color.T1_coord.nii.gz', INPUT_MRI_FILE, None, STATUS_FILEPATH, 12, PUBLIC)
     updateStatusFile(svregInputBase + '.right.pial.cortex.svreg.dfs', None, None, STATUS_FILEPATH, 13, PUBLIC)
 
     #Print message when all processing is complete.
