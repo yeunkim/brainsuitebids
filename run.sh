@@ -19,7 +19,7 @@ Optional settings:
     directory where index.html, thumbnails directory, and
     brainsuite_state.json will be created. Program will create public
     directory if it does not already exist.
-    [default: <dataset>/Derivatives, where <dataset> is input to -d]
+    [default: <dataset>/derivatives, where <dataset> is input to -d]
 
 -i <regex>
     provide a regex to filter subjects by subjectID. Only subjects whose 
@@ -59,11 +59,11 @@ To view QC system on browser, navigate to public directory in web browser.
 (Ideally, public would be a public_html directory, or a directory made
 public through a webserver).
 
-All derived data will be placed in the Derivatives directory, as required
+All derived data will be placed in the derivatives directory, as required
 by BIDS specifications.
 
 All intermediate data from each step may be found in:
-    {dataset}/Derivatives/{subjID_sessionLabel}/CSE_outputs
+    {dataset}/derivatives/{subjID_sessionLabel}/CSE_outputs
 
 All thumbnails and statistical reports will be placed in public directory
 
@@ -184,7 +184,7 @@ while getopts ":d:p:i:s:tl" opt; do
             if [ $? -ne 0 ]; then exit 1; fi
             a_d=1
             PARTICIPANTS_FILE=$OPTARG/participants.tsv
-            DERIVATIVES_DIR=$OPTARG/Derivatives
+            DERIVATIVES_DIR=$OPTARG/derivatives
             ARG_DATASET=$OPTARG
             ;;
         p)

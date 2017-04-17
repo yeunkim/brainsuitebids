@@ -13,9 +13,9 @@ Usage:
 python cse.py T1wFile DerivativeBase public_html
 
 T1wFile is the T1 weighted MRI file for the subject
-DerivativeBase is this subject's base directory under the Derivatives directory
+DerivativeBase is this subject's base directory under the derivatives directory
 public_html is the base directory where we may save thumbnails, statistics
-Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/Derivatives/1003
+Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/derivatives/1003
 """
 
 
@@ -181,8 +181,8 @@ def init():
     %prog T1wFile DerivativeBase
 
     T1wFile is the T1 weighted MRI file for the subject
-    DerivativeBase is this subject's base directory under the Derivatives directory
-    Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/Derivatives/1003
+    DerivativeBase is this subject's base directory under the derivatives directory
+    Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/derivatives/1003
     Expecets no trailing slash
     """
 

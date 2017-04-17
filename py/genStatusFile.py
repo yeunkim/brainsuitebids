@@ -4,7 +4,7 @@ genStatusFile.py
 
 Parses subjectsFile, then scans all status.txt files indicated by subjectsFile
 Generates json file based on status of each subject
-Saves json file into Derivatives/brainsuite_state.json
+Saves json file into derivatives/brainsuite_state.json
 Continuously loops until all subjects have completed. See global DONE_STATE variable
 
 returns:
