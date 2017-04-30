@@ -1,0 +1,862 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+
+<head>
+    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" rel="stylesheet" type="text/css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js" type="text/javascript"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js" type="text/javascript"></script>
+
+    <style type="text/css">
+        .subjtext {
+            font-size: 12px;
+            word-break: break-all;
+            width: 120px;
+            color: #000000;
+        }
+
+        ul#gallery {
+            margin: 0 auto;
+            padding: 0;
+            list-style-type: none;
+            width: 100%;
+        }
+
+        ul#gallery li {
+            float: left;
+            margin: 5px;
+            background-color: gray;
+        }
+
+        body {
+            background-color: #404040;
+            font-family: "Gill Sans", "Lucida Grande", Lucida, Verdana, sans-serif;
+            color: #FFFFFF;
+        }
+
+        p {
+            text-align: left;
+            color: #CCCCCC;
+        }
+
+        ul#gallery li p {
+            margin: 5px 5px;
+            text-align: left;
+            color: black;
+        }
+
+        .roundrect {
+            margin: 5px;
+            padding: 5px;
+            border: 2px solid;
+            border-radius: 5px;
+        }
+
+        .progressbar {
+            background-color: black;
+            border-radius: 6px; /* (height of inner div) / 2 + padding */
+            padding: 3px;
+        }
+
+        .progressCompleted {
+            background-color: #B0B0B0;
+            padding: 0px;
+            width: 0%; /* Adjust with JavaScript */
+            height: 6px;
+            border-radius: 2px;
+            padding: 0.5px;
+        }
+
+        .progressShown {
+            background-color: #000080;
+            padding: 0px;
+            vertical-align: middle;
+            height: 5px;
+            width: 0%; /* Adjust with JavaScript */
+            border-radius: 3px;
+        }
+
+        #images  {
+            overflow-y:scroll;
+            height:400px;
+        }
+        #slider_thumbsize {
+            height: 15px;
+            width:60%;
+            float:right;
+        }
+        #slider_showstage {
+            height: 15px;
+            width:60%;
+            float:right;
+        }
+
+        .dialogRight {
+            display: inline-block;
+            vertical-align: top;
+            float: left;
+            padding-left: 5%;
+        }
+
+    </style>
+
+    <title>BrainSuite Surface Extraction & Labeling</title>
+
+
+
+
+
+
+    <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+    <script type="text/javascript">
+        var BASE_URL = "";
+        var JSON_PATH = "/brainsuite_state.json";
+        var STATS_JSON_PATH = "/statistics_base.json";
+        var STATS_JSON;
+        const PROCESS_NAMES = 
+            ["initialization", "skull-stripping", "bias-correction", "tissue labeling",
+             "cerebrum masking", "initial cortex masking", "mask scrubbing",
+             "topology correction", "inner cortex mask generation", "inner cortical surface generation",
+             "pial cortex", "hemisphere splitting", "brain diffusion pipeline", "surface volume registration"];
+
+
+        const SHORT_NAMES =
+            ["mri", "skull-stripped", "bias-corrected", "tissue labels", "cerebrum mask",
+             "initial cortex mask", "scrubbed cortex", "topo-corrected", "inner cortex mask",
+             "inner cortex", "pial cortex", "hemisphere split", "bdp", "svreg"];
+
+        //Must match cse.py
+        const THUMBNAIL_SUFFIX =
+            [".png", ".bse.png", ".bfc.png", ".pvc.label.png", ".cerebrum.png", ".init.cortex.png",
+             ".cortex.scrubbed.png", ".cortex.tca.png", ".cortex.dewisp.png", ".inner.cortex.png",
+             ".pial.cortex.png", ".left.png", ".bdp.png", ".svreg.png"];
+        
+        //Must match cse.py
+        const STATS_SUFFIX =
+            ["-mri.json", "-bse.json", "-bfc.json", "-pvc.json", "-cerebro.json", "-cortex.json",
+             "-scrubmask.json", "-tca.json", "-dewisp.json", "-dfs.json", "-pialmesh.json",
+             "-hemisplit.json", "-bdp.json", "-svreg.json"];
+        
+        const DEFAULT_THUMB_SIZE = 128;
+        const DEFAULT_SHOWSTAGE = PROCESS_NAMES.length - 1
+
+        var selectedSubjectIndex = 0;
+        var ajaxLock = false;
+        var THUMBNAILS_ABSPATH;
+        var THUMBNAILS_RELATIVEPATH;
+        var STATS_ABSPATH;
+        var STATS_RELATIVEPATH;
+        var subjects = []; //Init subjects from JSON
+        var subjectStates = []; //Init from JSON. All initially -1
+
+        var statsCache = [];
+        var demographics = [];
+
+        function initPaths(){
+            var docURL = document.URL.toString();
+            BASE_URL = docURL.substring(0, docURL.lastIndexOf("/"));
+            JSON_PATH = BASE_URL + JSON_PATH;
+            STATS_JSON_PATH = BASE_URL + STATS_JSON_PATH;
+        }
+
+        function initFromJSON(){
+            $.ajax({
+                cache: false,
+                url: STATS_JSON_PATH,
+                dataType: "json",
+                async: false,
+                success: function(json){
+                    STATS_JSON = json;
+                }
+            });
+
+
+            $.ajax({
+                cache: false,
+                url: JSON_PATH,
+                dataType: "json",
+                async: false,
+                success: function (json) {
+                    ajaxLock = true;
+                    if (json) {
+                        //TODO: Checking for null
+                        var statusString = "Initializing data from file: " + JSON_PATH;
+                        if (json.subjects) {
+                            setStatus(statusString);
+                            THUMBNAILS_ABSPATH = json.thumbnails_abspath;
+                            THUMBNAILS_RELATIVEPATH = BASE_URL + json.thumbnails_relativepath;
+                            STATS_ABSPATH = json.stats_abspath;
+                            STATS_RELATIVEPATH = BASE_URL + json.stats_relativepath;
+                            //Init arrays
+                            for(var i = 0 ; i < Object(json.subjects).length; i++){
+                                subjects.push(json.subjects[i].name);
+                                subjectStates.push(-1);
+                            }
+                            //Stats cache
+                            for(var i = 0 ; i < Object(json.subjects).length; i++){
+                                statsCache.push(new Array());
+                                for(var x = 0 ; x < PROCESS_NAMES.length ; x++){
+                                    statsCache[i].push(undefined);
+                                }
+                            }
+
+                            setSubjectCount(subjects.length);
+                            setShowStage(DEFAULT_SHOWSTAGE);
+                            setThumbSize(DEFAULT_THUMB_SIZE);
+                            initGallery();
+
+                        }
+                        else {
+                            setStatus(statusString + " (no state data available)");
+                        }
+                    }
+
+                    ajaxLock = false;
+                }
+            });
+
+            for(var i = 0 ; i < subjects.length ; i++){
+                var demographicURL = makeDemographicsURL(i);
+                $.ajax({
+                    cache: false,
+                    url: demographicURL,
+                    dataType: "text",
+                    async: false,
+                    success: function (data) {
+                        demographics.push($.trim(data));
+                    }
+                });
+
+
+            }
+
+
+
+        }
+
+        function initGallery(){
+            var galleryHTML = "";
+            for(var i = 0 ; i < subjects.length ; i++){
+                galleryHTML +=
+                    `<li id="li${i}" style="border:2px solid black;">
+                        <img id="img${i}" height="128px" style="cursor: pointer;" onclick="loadSubjTray(${i})" />
+                        <p class="subjtext" id="text${i}">${subjects[i]}<br>Initializing</p>
+                        <div class="progressbar">
+                            <div class="progressCompleted" id="progress${i}">
+                                <div class="progressShown" id="progressShown${i}"></div>
+                            </div>
+                        </div>
+                    </li>
+                    `
+            }
+            $("#gallery").html(galleryHTML);
+        }
+
+        function doStats(state, zScore, divToUpdate, itemToBorder, errorBarColor){
+            var zScoreAbs = Math.abs(zScore);
+
+            if(zScoreAbs <= 1){
+                itemToBorder.css("border", "1px solid green");
+            }else if(zScoreAbs <= 2){
+                itemToBorder.css("border", "1px solid yellow");
+            }else{
+                itemToBorder.css("border", "1px solid red");
+            }
+            
+            addErrorBar(divToUpdate, zScore, errorBarColor);
+        }
+
+        function dialog_addLeft(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, addErrorbar){
+            var dialogDiv = $("<div/>");
+            dialogDiv.css("display", "inline-block");
+            dialogDiv.css("float", "left");
+            $("#trayDialog").empty();
+            $("#trayDialog").append(dialogDiv);
+            dialogDiv.width(.3 * dialogWidth);
+            dialogDiv.height(dialogHeight);
+
+            var dialogImg = $("<img/>");
+            dialogImg.attr("src", thisPtr.attr("src"));
+
+            dialogDiv.append(dialogImg);
+            dialogImg.width("100%");
+
+            if(addErrorbar){
+                doStats(clickedStepNum, statsCache[clickedSubjectIndex][clickedStepNum]["Values"][0]["Z-Score"], dialogDiv, dialogImg, "black");
+            }
+
+        }
+
+        function dialog_none(thisPtr){
+            var dialogWidth = $("#trayDialog").dialog("option", "width");
+            var dialogHeight = $("#trayDialog").dialog("option", "height");
+
+            var clickedSubjectIndex = thisPtr.attr("imgSubjectIndex");
+            var clickedStepNum = thisPtr.attr("imgStepNum");
+
+            dialog_addLeft(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, false);
+            var dialogText = statsCache[clickedSubjectIndex][clickedStepNum]["text"];
+
+            var textDiv = $("<div/>").text(dialogText);
+            textDiv.attr("class", "dialogRight");
+            textDiv.width(.5 * dialogWidth);
+
+            $("#trayDialog").append(textDiv);
+        }
+
+        function dialog_stdev(thisPtr){
+            var dialogWidth = $("#trayDialog").dialog("option", "width");
+            var dialogHeight = $("#trayDialog").dialog("option", "height");
+
+            var clickedSubjectIndex = thisPtr.attr("imgSubjectIndex");
+            var clickedStepNum = thisPtr.attr("imgStepNum");
+
+            dialog_addLeft(thisPtr, dialogWidth, dialogHeight, clickedSubjectIndex, clickedStepNum, true);
+
+            var s_json = statsCache[clickedSubjectIndex][clickedStepNum];
+
+            var dialogTable = $("<table/>");
+            dialogTable.attr("class", "dialogRight");
+            dialogTable.width(.5 * dialogWidth);
+
+            for(var key in s_json){
+                if(key === "Values"){
+                    //TODO HARDCODE FIRST ELEMENT
+                    var currStatJSON = s_json[key][0];
+                    for(innerKey in currStatJSON){
+                        var boldRow = $("<tr/>");
+                        boldRow.css("font-weight", "bold");
+
+                        if(innerKey === "name"){
+                            boldRow.append($("<th/>").text(currStatJSON[innerKey]).attr("colspan", "100%").css("background-color", "#CCC"));
+                        }else{
+                            boldRow.append($("<td/>").text(innerKey)).attr("align", "center");
+                            //Handle rounding
+                            if(isFinite(currStatJSON[innerKey])){
+                                boldRow.append($("<td/>").text(Number(currStatJSON[innerKey]).toFixed(2)));
+                            }else{
+                                boldRow.append($("<td/>").text(currStatJSON[innerKey]));
+                            }
+                        }
+                        dialogTable.append(boldRow);
+                    }
+                    continue;
+                }
+                if(key === "stat_type" || key === "File on disk"){
+                    continue;
+                }
+                var rowToAdd = $("<tr/>");
+                rowToAdd.append($("<td/>").text(key));
+                rowToAdd.append($("<td/>").text(s_json[key]));
+                dialogTable.append(rowToAdd)
+            }
+
+
+            $("#trayDialog").append(dialogTable);
+        }
+        
+        /**
+        Will handle adding mean stdev and zscore to the json 2nd parameter
+        */
+        function computeZscore(demographic, ref, addTo){
+            //Handle unavailable stat types and default to general
+            if(!ref.hasOwnProperty(demographic)){
+                demographic = "all";
+            }
+
+            var mean = Number(ref[demographic]["mean"]);
+            var stdev = Number(ref[demographic]["stdev"]);
+            var measured = Number(addTo["Measured Value"]);
+
+            var zScore = (measured - mean) / stdev;
+
+            addTo["Mean"] = mean;
+            addTo["Standard Deviation"] = stdev;
+            addTo["Z-Score"] = zScore;
+        }
+
+        /**
+         *
+         * @param id Pass in INDEX of selected subject
+         */
+        function loadSubjTray(subjectIndex) {
+            selectedSubjectIndex = subjectIndex;
+
+            //Handle border highlight
+            for (var sid = 0; sid < subjects.length; sid++) {
+                var lid = document.getElementById("li" + sid);
+                if (subjectIndex == sid) {
+                    lid.style.borderColor = "#000080";
+                }
+                else{
+                    lid.style.borderColor = "#000000";
+                }
+            }
+
+            var subjID = subjects[subjectIndex];
+            var subjectState = parseInt(subjectStates[subjectIndex]);
+            var statusString = "<p>ID: " + subjID + "<br/>status:";
+            if (subjectState < 0){
+                //Invalid state, or init state
+                subjectState = 0;
+            } else {
+                statusString += " finished " + PROCESS_NAMES[subjectState];
+                if ( (subjectState + 1) < PROCESS_NAMES.length) {
+                    statusString += ", performing " + PROCESS_NAMES[subjectState + 1];
+                }
+            }
+
+            statusString += "</p>";
+            $("#trayStatus").html(statusString);
+
+
+            $("#trayThumbnails").empty();
+            for (var i = 0; i <= subjectState; i++) {
+                var divToAdd = $("<div/>");
+                var imgToAdd = $("<img/>");
+                imgToAdd.attr("src", makeThumbnailURL(subjectIndex, i));
+                imgToAdd.attr("title", SHORT_NAMES[i]); 
+                imgToAdd.attr("imgStepNum", i);
+                imgToAdd.attr("imgSubjectIndex", selectedSubjectIndex);
+                imgToAdd.css("cursor", "pointer");
+                
+                //Prevent stretching and fill background with black
+                imgToAdd.css("object-fit", "contain");
+                imgToAdd.css("background", "black");
+
+                $("#trayThumbnails").append(divToAdd);
+                divToAdd.width((100 * 1 / PROCESS_NAMES.length) + "%");
+                divToAdd.height(divToAdd.width() * 1.5);
+                divToAdd.css("display", "inline-block");
+                divToAdd.css("vertical-align", "bottom");
+
+                if(statsCache[selectedSubjectIndex][i] === undefined){
+                    $.ajax({
+                        cache:false,
+                        url: makeStatsURL(selectedSubjectIndex, i),
+                        dataType: "json",
+                        async: false,
+                        success: function(json){
+                            if(json["stat_type"] === "stdev"){
+                                for(var sIndex = 0 ; sIndex < json["Values"].length ; sIndex++){
+                                    var stepAfter = json["Measured After"];
+                                    var statName = json["Values"][sIndex]["name"];
+                                    computeZscore(demographics[selectedSubjectIndex], STATS_JSON[stepAfter][statName], json["Values"][sIndex]);
+                                }
+                            }
+
+                            statsCache[selectedSubjectIndex][i] = json;
+                        }
+                    });
+                }
+                
+                if(i == 1 || i == 3){
+                    //TODO HARDCODE of first value
+                    doStats(i, statsCache[selectedSubjectIndex][i]["Values"][0]["Z-Score"], divToAdd, imgToAdd, "white");
+                }else{
+                    //placeholder TODO clean up
+                    var c = $("<canvas/>")
+                    var cWidth = divToAdd.width();
+                    var cHeight = divToAdd.height() / 3;
+                    c.attr("width", cWidth);
+                    c.attr("height", cHeight);
+                    c.css("height", cHeight);
+                    c.css("width", cWidth);
+            
+                    divToAdd.prepend(c);
+                }
+                divToAdd.append(imgToAdd);
+                imgToAdd.width("97%");
+                imgToAdd.height(imgToAdd.width());
+                imgToAdd.css("bottom", "0");
+
+                $(imgToAdd).on("click", function(){
+                    $("#trayDialog").dialog("option", "width", $(window).width() * 0.5);
+                    $("#trayDialog").dialog({height: "auto"});
+
+                    //$("#trayDialog").dialog("option", "height", $(window).height() * 0.7);
+                    
+                    var clickedStepNum = $(this).attr("imgStepNum");
+                    if(clickedStepNum == 1 || clickedStepNum == 3){
+                        dialog_stdev($(this));
+                    }else{
+                        dialog_none($(this));
+                    }
+
+                    
+                    $("#trayDialog").dialog("open");
+                });
+            }
+        }
+
+        function setStatus(statusString) {
+            $("#status").html(statusString);
+        }
+
+        function setMessage(messageString) {
+            $("#message").html(messageString);
+        }
+
+
+        function urlExists(testUrl) { // this will return 200 on success, and 0 or negative value on error
+            var http = jQuery.ajax({
+                type: "HEAD",
+                url: testUrl,
+                async: false
+            });
+            return (http.status === 200);
+        }
+
+        function makeStatsURL(subjectIndex, state){
+            if(state < 0){
+                state = 0;
+            }
+            if(!THUMBNAIL_SUFFIX[state]){
+                return null;
+            }
+            return STATS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + STATS_SUFFIX[state];
+        }
+        
+        function makeDemographicsURL(subjectIndex){
+            return STATS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + "_demographics.txt";
+        }
+
+
+        function makeThumbnailURL(subjectIndex, state) {
+            if (state < 0){
+                state = 0;
+            }
+            if (!THUMBNAIL_SUFFIX[state]){
+                return null;
+            }
+            return THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + THUMBNAIL_SUFFIX[state];
+        }
+
+
+
+        function setThumbSize(height){
+            for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
+                $("#img" + subjectIndex).attr("height", height);
+            }
+            $("#thumbsize").html(height);
+        }
+
+        function setShowStage(stage){
+            $("#showstage").html(PROCESS_NAMES[stage]);
+        }
+        
+        function setSubjectCount(n){
+            $("#subjectCount").html(n);
+        }
+
+        function updateImages(newStates){
+            var maxState = $("#slider_showstage").slider("option", "value");
+            for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
+                {   
+                    var statePct = 0;
+                    var newState = parseInt(newStates[subjectIndex].state);
+                    if (newState > 0) {
+                        statePct = Math.min(1, newState / (SHORT_NAMES.length - 1));
+                    }
+
+                    if (newState != subjectStates[subjectIndex]) {
+                        subjectStates[subjectIndex] = newState;
+
+                        if(subjectIndex == selectedSubjectIndex){
+                            loadSubjTray(selectedSubjectIndex);
+                        }
+
+                        
+                        document.getElementById("text" + subjectIndex).innerHTML = subjects[subjectIndex] + "<br/>" + SHORT_NAMES[newState];
+                        
+                        document.getElementById("progress" + subjectIndex).style.width = 100 * statePct + "%";
+                    }
+                    
+                    var stateToShow = Math.min(newState, maxState);
+                    var url = makeThumbnailURL(subjectIndex, stateToShow);;
+                    if (!url){
+                        continue;
+                    }
+                    if (urlExists(url)) {
+                        $("#img" + subjectIndex).attr("src", url);
+                    }
+
+                    var showPct = 0;
+                    showPct = (stateToShow / (SHORT_NAMES.length - 1)) / statePct;
+                    document.getElementById("progressShown" + subjectIndex).style.width = 100 * showPct + "%";
+                }
+            }
+            
+        }
+
+        function scanJSON() {
+            if (ajaxLock){
+                return;
+            }
+
+            $.ajax({
+                cache: false,
+                url: JSON_PATH,
+                dataType: "json",
+                success: function (json) {
+                    ajaxLock = true;
+
+                    if (json) {
+                        var statusString = json.status + "<br/>"
+                        statusString += "started at: " + json.start_time + "<br/>";
+                        statusString += "runtime: " + json.runtime;
+                        if (json.subjects) {
+                            setStatus(statusString);
+                            updateImages(json.subjects);
+                        }
+                        else {
+                            setStatus(statusString + " (no state data available)");
+                        }
+                    }
+
+                    ajaxLock = false;
+                }
+            });
+        }
+        
+        //Height is half of total height
+        function drawVertical(ctx, x, y, height){
+            ctx.moveTo(x, y - height);
+            ctx.lineTo(x, y + height);
+            ctx.stroke();
+        }
+
+        function drawUp(ctx, x, y, height){
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y - height);
+            ctx.stroke();
+        }
+
+        //addTo is jquery object
+        function addErrorBar(addTo, zScore, graphColor){
+            //zScore of 3 or more in either direction is displayed on 3 stdev mark
+            if(zScore > 3){
+                zScore = 3;
+            }
+            if(zScore < -3){
+                zScore = -3;
+            }
+
+            var zCeil = Math.ceil(Math.abs(zScore));
+            if(zScore === 0){
+                zCeil++;
+            }
+
+            var c = $("<canvas/>")
+            var cWidth = addTo.width();
+            var cHeight = cWidth / 2;
+            c.attr("width", cWidth);
+            c.attr("height", cHeight);
+            c.css("height", cHeight);
+            c.css("width", cWidth);
+            
+            var barPercent = .9;
+            var barLength = cWidth * barPercent;
+            var barStart = (1 - barPercent) / 2 * cWidth;
+            var barEnd = barStart + barLength;
+            var barMid = (barEnd + barStart) / 2;
+            var barY = cHeight * .7; 
+            var ctx = c.get(0).getContext("2d");
+            ctx.strokeStyle = graphColor;
+            ctx.fillStyle = graphColor;
+            ctx.font = "12px Calibri"; //fallback for no view width support
+            ctx.font = ".7vw Calibri";
+            ctx.beginPath();
+            ctx.moveTo(barStart, barY);
+            ctx.lineTo(barEnd, barY);
+
+            
+            var stdevToDraw = 3;
+            var linesToDraw = stdevToDraw * 2 + 1;
+            for(var i = 0 ; i < linesToDraw ; i++){
+                var distCenter = Math.abs(i - stdevToDraw);
+
+                if(distCenter == 0){
+                    upHeight = cHeight * .7;
+                }else if(distCenter == 1){
+                    upHeight = cHeight * .4;
+                }else if(distCenter == 2){
+                    upHeight = cHeight * .2;
+                }else{
+                    upHeight = cHeight * .1;
+                }
+
+                drawUp(ctx, barStart + i / (linesToDraw - 1) * barLength, barY, upHeight);
+            }
+
+            ctx.fillText("-3s", barStart - ctx.measureText("-").width, barY + .2 * cHeight);
+            ctx.fillText("0s", barMid - ctx.measureText("-").width, barY + .2 * cHeight);
+            ctx.fillText("+3s", barEnd - ctx.measureText("+3").width, barY + .2 * cHeight);
+            
+            var boxColor;
+            if(zCeil == 1 || zScore == 0){
+                boxColor = "green";
+            }else if(zCeil == 2){
+                boxColor = "yellow";
+            }else{
+                boxColor = "red";
+            }
+
+            ctx.fillStyle = boxColor;
+            var rectHeight = .1 * Math.min(cHeight, cWidth);
+            ctx.fillRect( barMid + (zScore/stdevToDraw * barLength/2) - rectHeight/2, barY - rectHeight/2, rectHeight, rectHeight );
+
+            addTo.prepend(c);
+        }
+
+        function startTimer() {
+            setInterval(scanJSON, 1000);
+            setStatus("initializing images");
+        }
+
+        $(document).ready(function(){
+            
+            $(function () {
+                $("#slider_thumbsize").slider({
+                    slide: function (event, ui) {
+                        setThumbSize(ui.value);
+                    },
+                    animate: "fast", min: 64, max: 512, value: DEFAULT_THUMB_SIZE
+                });
+            }); 
+
+            $(function () {
+                $("#slider_showstage").slider({
+                    slide: function (event, ui) {
+                        setShowStage(ui.value);
+                    },
+                    animate: "fast", min:0 , max: PROCESS_NAMES.length - 1, value: DEFAULT_SHOWSTAGE
+                });
+           });
+
+            $(window).resize(function () {
+                var viewportWidth = $(window).width();
+                var viewPortHeight = $(window).height();
+                var imageport = document.getElementById("images");
+                if (imageport){
+                    imageport.style.height = (viewPortHeight - 400) + "px";
+                }
+
+                clearTimeout(window.resizeDone);
+                window.resizeDone = setTimeout(function(){
+                    loadSubjTray(selectedSubjectIndex);
+                }, 100);
+            });
+            
+            initPaths();
+            initFromJSON();
+            
+            //Init dialog boxes
+            $("#trayDialog").dialog({
+                autoOpen: false,
+                show: {
+                    effect: "fold",
+                    duration: 250
+                },
+                hide: {
+                    effect: "fade",
+                    duration: 250
+                }
+            });
+
+            //Init button on click to show/hide help
+            $("#showHelp").click(function(){
+                $("#help").toggle("blind", {}, 500);
+            });
+
+            startTimer();
+        });
+    </script>
+    <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+
+</head>
+
+
+<body>
+    <div>
+        <div class="roundrect" style="margin-right:px;">
+            <center style="font-size:150%">BrainSuite QC System</center>
+            <p id="status">initializing</p>
+            <div>
+                <span>Showing </span>
+                <span id="subjectCount">N</span>
+                <span> subjects up to </span>
+                <span id="showstage"></span>
+                <span>at size </span>
+                <span id="thumbsize"></span>
+                <p />
+            </div>
+            <div style="width:75%">
+                <span>Thumbnail Size</span>
+                <div id="slider_thumbsize"></div>
+            </div>
+            <div style="width:75%">
+                <span>Show Stage</span>
+                <div id = "slider_showstage"></div>
+            </div>
+            <div style="text-align: center;">
+                <button id="showHelp" class="ui-button ui-widget ui-corner-all">
+                    Show/Hide Help
+                </button>
+            </div>
+            <div id="help" style="display: none;">
+                <h4>BrainSuite QC System Help</h4>
+                <p>
+                The BrainSuite QC System is designed to allow scientists 
+                to launch BrainSuite processing workflows on datasets, and 
+                monitor thumbnails and statistics, which will be updated 
+                in real time as each step of the workflow is completed.
+                </p>
+
+                <h5>The interface</h5>
+                <p>
+                The interface is divided into three sections; the control menu, 
+                where you can view general information about your processing and 
+                change the display settings; the subject tray, where you can view 
+                each step of a selected subject; the subject gallery, where you 
+                can view the current stage of all your subjects, and select which
+                subject to show in the subject tray.
+                </p>
+
+                <h5>Viewing statistics</h5>
+                <p>
+                To view statistical reports, click on any thumbnail in the subject 
+                tray.
+                </p>
+
+                <h5>Using the subject gallery</h5>
+                <p>
+                Click on any subject in the subject gallery to change which subject is shown 
+                in the subject tray. The box for the selected subject is outlined
+                in blue. At the bottom of the box for each subject is a progress bar.
+                The grey bar represents the number of stages that have been completed so far,
+                and the blue bar represents what stage is currently being shown in the
+                subject box. Use the "show stage" slider in the control menu to change which
+                stage is shown. If the selected stage from the slider is greater than
+                the completed stage, the displayed stage is set to the maximum possible stage.
+                </p>
+            </div>
+        </div>
+        <div id="tray" class="roundrect" style="margin-right:px">
+            <div id="trayStatus">
+                <!-- Load with loadSubjTray -->
+            </div>
+            <div id="trayDialog" title="Statistics Report">
+            </div>
+            <div id="trayThumbnails"> 
+                <!-- Load with loadSubjTray -->
+            </div>
+
+        </div>
+        <div id="images" class="roundrect">
+            <ul id="gallery">
+                <!-- Dynamically init from initFromJSON() -->
+            </ul>
+        </div> <!-- images frame -->
+    </div>
+</body>
+
