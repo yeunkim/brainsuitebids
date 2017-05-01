@@ -172,6 +172,8 @@ SESSION_REGEX=".*" #set in optparse
 OPTIND=1
 gotOption=0
 
+
+
 a_gotOption=0
 a_d=0
 a_p=0
@@ -445,10 +447,12 @@ then
     echo "To restart webserver manually at a later time, run:"
     echo "python $(readlink -f `dirname $0`)/py/serveCWD.py ${PUBLIC}"
     echo ""
+    echo "To view web interface, navigate to: 127.0.0.1:8080"
+    echo ""
 fi
 
-cp index.html ${PUBLIC}
-cp icbm100_statistics.json ${PUBLIC}/statistics_base.json #TODO hardcoded
+cp `dirname $0`/index.html ${PUBLIC}
+cp `dirname $0`/icbm100_statistics.json ${PUBLIC}/statistics_base.json #TODO hardcoded
 python `dirname $0`/py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
 
 exit 0
