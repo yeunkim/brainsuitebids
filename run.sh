@@ -21,6 +21,9 @@ Optional settings:
     directory if it does not already exist.
     [default: <dataset>/derivatives, where <dataset> is input to -d]
 
+-w
+    set up a basic web server to serve files from public directory
+
 -i <regex>
     provide a regex to filter subjects by subjectID. Only subjects whose 
     subject ID match the provided regex will be processed.
@@ -141,6 +144,17 @@ check_duplicate_option(){
     fi
 }
 
+killWebServer(){
+    if [ $a_w -eq 1 ]
+    then
+        kill $webserverPID
+        echo ""
+        echo "Webserver has been shut down. To restart it, run:"
+        echo "python $(readlink -f `dirname $0`)/py/serveCWD.py ${PUBLIC}"
+        echo ""
+    fi
+}
+
 THUMBNAILS_PATH="/thumbnails"
 STATS_PATH="/statistics"
 STATUS_FILENAME="/status.txt"
@@ -164,9 +178,11 @@ a_p=0
 a_i=0
 a_s=0
 a_t=0
-noQsub=0;
+a_w=0
+webserverPID=-1
+noQsub=0
 
-while getopts ":d:p:i:s:tl" opt; do
+while getopts ":d:p:wi:s:tl" opt; do
     a_gotOption=1
     case $opt in
         \?)
@@ -192,6 +208,9 @@ while getopts ":d:p:i:s:tl" opt; do
             if [ $? -ne 0 ]; then exit 1; fi
             a_p=1
             PUBLIC=$OPTARG
+            ;;
+        w)
+            a_w=1
             ;;
         i)
             check_duplicate_option $a_i $opt
@@ -305,7 +324,6 @@ else
     echo "Will be using existing directory ${PUBLIC}"
 fi
 
-
 #Parse subjects from PARTICIPANTS_FILE, make qsub calls
 readingHeader=1
 participantIndex=-1
@@ -409,12 +427,29 @@ do
 done
 
 IFS=$OLD_IFS
-if [ $a_t -eq 0 ]
+
+if [ $a_t -eq 1 ]
 then
-    cp index.html ${PUBLIC}
-    cp icbm100_statistics.json ${PUBLIC}/statistics_base.json #TODO hardcoded
-    python `dirname $0`/py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
+    exit 0
 fi
+
+
+if [ $a_w -eq 1 ]
+then
+    trap killWebServer EXIT
+    python `dirname $0`/py/serveCWD.py ${PUBLIC} &> /dev/null &
+    webserverPID=$!
+    echo ""
+    echo "Registered background process for webserver."
+    echo "Webserver will be closed when this script stops running."
+    echo "To restart webserver manually at a later time, run:"
+    echo "python $(readlink -f `dirname $0`)/py/serveCWD.py ${PUBLIC}"
+    echo ""
+fi
+
+cp index.html ${PUBLIC}
+cp icbm100_statistics.json ${PUBLIC}/statistics_base.json #TODO hardcoded
+python `dirname $0`/py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}
 
 exit 0
 
