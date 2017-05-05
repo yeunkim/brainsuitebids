@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import os
 try:
@@ -17,9 +18,15 @@ PORT = 8080
 Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
 SocketServer.TCPServer.allow_reuse_address = True # Allow reuse of port after ^C
 server = SocketServer.TCPServer(("", PORT), Handler)
+
+print("Web server serving: " + os.path.abspath(sys.argv[1]))
+
 try:
     server.serve_forever()
 except:
+    print("Web server shutting down")
     server.shutdown()
     server.server_close()
     exit(0)
+
+
