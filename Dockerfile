@@ -54,7 +54,8 @@ ENV PATH=/BrainSuite16a1/bin/:/BrainSuite16a1/svreg/bin/:/BrainSuite16a1/bdp/:${
 
 ADD . /qc-system
 
-# Fix windows ^M Problem. TODO, figure out a better fix.
+# Remove ^M at end of line from DOS systems.
 RUN find ./qc-system -type f | xargs -I {} sed -i -e 's/\r$//' {}
 
-CMD ./qc-system/run.sh -d /data -w
+# TODO remove options used in testing
+CMD ./qc-system/run.sh -d /data -w -i 402
