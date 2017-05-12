@@ -5,7 +5,7 @@ genStatusFile.py
 Parses subjectsFile, then scans all status.txt files indicated by subjectsFile
 Generates json file based on status of each subject
 Saves json file into derivatives/brainsuite_state.json
-Continuously loops until all subjects have completed. See global DONE_STATE variable
+Continuously loops until all subjects have completed. See global DONE_MAPPING map
 
 returns:
     0 on success
@@ -28,7 +28,6 @@ import os, sys, json, time
 from datetime import datetime
 from optparse import OptionParser
 
-
 DERIVATIVES_BASE_DIRECTORY = ""
 SUBJECTS = []
 PATH_TO_THUMBNAILS = "/thumbnails/"
@@ -37,8 +36,9 @@ STATUS_NAME = "status.txt"
 
 ALL_DONE = False
 
-DONE_STATE = "13"
-
+#Maps the done codes to the state codes that should be put into brainsuite_state.json.
+#Mainly for stopping this script and support of no SVReg/BDP vs yes SVReg/BDP
+DONE_MAPPING = {"130": "13", "110": "11"}
 
 #For timing
 START_TIME = None
@@ -119,12 +119,15 @@ def generateJSON(processingComplete):
         currentJson['name'] = s
 
         statusFile = open(createStatusPath(s), 'r')
-        currentState = statusFile.read()
-        currentState = currentState.strip()
-        if not currentState == DONE_STATE:
-            seenNotDone = True
+        currentState = statusFile.read().strip()
         statusFile.close()
-        currentJson['state'] = currentState
+
+        if currentState in DONE_MAPPING:
+            currentJson['state'] = DONE_MAPPING[currentState]
+        else:
+            seenNotDone = True
+            currentJson['state'] = currentState
+
         subjectsJSONArray.append(currentJson)
 
     j['subjects'] = subjectsJSONArray
@@ -132,6 +135,7 @@ def generateJSON(processingComplete):
     if not seenNotDone:
         global ALL_DONE
         ALL_DONE = True
+    
     return json.dumps(j)
 
 if __name__ == "__main__":

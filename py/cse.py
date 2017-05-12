@@ -55,6 +55,7 @@ INPUT_DWI_BASE = ""
 BDP_BASE_DIRECTORY = "DWI"
 STATUS_FILEPATH = ""
 PUBLIC = ""
+SVREG_AND_BDP = False
 
 CSE_OUTPUTS_DIR="CSE_outputs"
 
@@ -174,6 +175,7 @@ def init():
     global WORKFLOW_NAME
     global STATUS_FILEPATH
     global PUBLIC
+    global SVREG_AND_BDP
     BRAINSUITE_ATLAS_DIRECTORY = find_executable('bse')[:-3] + '../atlas/'
 
     version_msg = "%prog 1.0"
@@ -200,6 +202,7 @@ def init():
     INPUT_DWI_BASE = os.path.abspath(args[1])
     WORKFLOW_BASE_DIRECTORY = os.path.abspath(args[2])
     PUBLIC = os.path.abspath(args[3])
+    SVREG_AND_BDP = args[4].lower() in ("yes", "true", "y", "1")
 
     SUBJECT_ID = os.path.basename(os.path.normpath(WORKFLOW_BASE_DIRECTORY))
     WORKFLOW_NAME = SUBJECT_ID + WORKFLOW_SUFFIX
