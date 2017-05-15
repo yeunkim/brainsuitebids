@@ -24,6 +24,11 @@ Optional settings:
 -w
     set up a basic web server to serve files from public directory
 
+-c
+    run CSE only, skipping SVReg and BDP even if dwi data is provided
+    If not set, will check for dwi data and will run SVReg and BDP if
+    dwi data found, checking for each subject individually
+
 -i <regex>
     provide a regex to filter subjects by subjectID. Only subjects whose 
     subject ID match the provided regex will be processed.
@@ -80,30 +85,44 @@ initAndProcess () {
     dwiBase=$3
     demographics=$4
 
-    if [ $a_t -eq 1 ]
+    svregAndBDP=1
+    if [ ${a_c} -eq  1 ]
     then
-        echo $dataFile
-        return 0
+        svregAndBDP=0;
+    fi
+
+    if [ ${svregAndBDP} -eq 1 ]
+    then
+        dwiPrefixes=( '.bval' '.bvec' '.nii.gz' )
+        for prefix in "${dwiPrefixes[@]}"
+        do
+            if [ ! -e ${dwiBase}${prefix} ]
+            then
+                echo "File ${dwiBase}${prefix} does not exist. Turning SVReg and BDP off for subject ${id}."
+                svregAndBDP=0
+                break
+            fi
+        done
+        
     fi
     
-    
+    if [ ${a_t} -eq 1 ]
+    then
+        if [ ${svregAndBDP} -eq 1 ]
+        then
+            echo "CSE SVReg BDP: ${dataFile}"
+        else
+            echo "CSE: ${dataFile}"
+        fi
+        return 0
+    fi
+
     if [ ! -e ${dataFile} ]
     then
         echo "Error: file ${dataFile} does not exist. Skipping this subject."
         return 
     fi
 
-
-
-    dwiPrefixes=( '.bval' '.bvec' '.nii.gz' )
-    for prefix in "${dwiPrefixes[@]}"
-    do
-        if [ ! -e ${dwiBase}${prefix} ]
-        then
-            echo "Erro: file ${dwiBase}${prefix} does not exist. Skipping this subject."
-            return
-        fi
-    done
     
     echo ${id} >> ${subjectsAndSessionsFile}
 
@@ -128,10 +147,10 @@ initAndProcess () {
     logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.err.log
     if [ $noQsub -eq 0 ]
     then
-        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC}
+        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${svregAndBDP}
     else
         echo "Registered local background process for file: ${dataFile}"
-        `dirname $0`/cseQsubWrapper.sh ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} > $logFile 2> $logErrFile &
+        `dirname $0`/cseQsubWrapper.sh ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${svregAndBDP} > $logFile 2> $logErrFile &
     fi
 }
 
@@ -172,19 +191,18 @@ SESSION_REGEX=".*" #set in optparse
 OPTIND=1
 gotOption=0
 
-
-
 a_gotOption=0
 a_d=0
 a_p=0
+a_w=0
+a_c=0
 a_i=0
 a_s=0
 a_t=0
-a_w=0
 webserverPID=-1
 noQsub=0
 
-while getopts ":d:p:wi:s:tl" opt; do
+while getopts ":d:p:wci:s:tl" opt; do
     a_gotOption=1
     case $opt in
         \?)
@@ -213,6 +231,9 @@ while getopts ":d:p:wi:s:tl" opt; do
             ;;
         w)
             a_w=1
+            ;;
+        c)
+            a_c=1
             ;;
         i)
             check_duplicate_option $a_i $opt
