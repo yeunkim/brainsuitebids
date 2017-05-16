@@ -85,6 +85,8 @@ initAndProcess () {
     dwiBase=$3
     demographics=$4
 
+    echo "=======${id}======="
+
     svregAndBDP=1
     if [ ${a_c} -eq  1 ]
     then
@@ -98,7 +100,7 @@ initAndProcess () {
         do
             if [ ! -e ${dwiBase}${prefix} ]
             then
-                echo "File ${dwiBase}${prefix} does not exist. Turning SVReg and BDP off for subject ${id}."
+                echo "File ${dwiBase}${prefix} does not exist. Turned SVReg and BDP off"
                 svregAndBDP=0
                 break
             fi
@@ -120,6 +122,8 @@ initAndProcess () {
     if [ ! -e ${dataFile} ]
     then
         echo "Error: file ${dataFile} does not exist. Skipping this subject."
+        echo "=========================================="
+        echo ""
         return 
     fi
 
@@ -145,13 +149,23 @@ initAndProcess () {
     echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
     logFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.log
     logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.err.log
+
     if [ $noQsub -eq 0 ]
     then
-        qsub -o $logFile -e $logErrFile cseQsubWrapper.sh ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${svregAndBDP}
+        qsub -o $logFile -e $logErrFile `dirname $0`/cseQsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${svregAndBDP}
     else
         echo "Registered local background process for file: ${dataFile}"
-        `dirname $0`/cseQsubWrapper.sh ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${svregAndBDP} > $logFile 2> $logErrFile &
+        `dirname $0`/cseQsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${svregAndBDP} > $logFile 2> $logErrFile &
     fi
+
+    if [ ${svregAndBDP} -eq 1 ]
+    then
+        echo "Processing will perform: CSE SVReg BDP"
+    else
+        echo "Processing will perform: CSE"
+    fi
+    echo "=========================================="
+    echo ""
 }
 
 check_duplicate_option(){
@@ -169,7 +183,7 @@ killWebServer(){
         kill $webserverPID
         echo ""
         echo "Webserver has been shut down. To restart it, run:"
-        echo "python $(readlink -f `dirname $0`)/py/serveCWD.py ${PUBLIC}"
+        echo "python $(readlink -f `dirname $0`)/py/webserver.py ${PUBLIC}"
         echo ""
     fi
 }
@@ -460,16 +474,15 @@ fi
 if [ $a_w -eq 1 ]
 then
     trap killWebServer EXIT
-    python `dirname $0`/py/serveCWD.py ${PUBLIC} &> /dev/null &
-    webserverPID=$!
     echo ""
-    echo "Registered background process for webserver."
-    echo "Webserver will be closed when this script stops running."
+    echo "Registering background process for webserver."
+    echo "Webserver will be closed when this script stops running"
     echo "To restart webserver manually at a later time, run:"
-    echo "python $(readlink -f `dirname $0`)/py/serveCWD.py ${PUBLIC}"
+    echo "python $(readlink -f `dirname $0`)/py/webserver.py ${PUBLIC}"
     echo ""
-    echo "To view web interface, navigate to: 127.0.0.1:8080"
-    echo ""
+
+    python `dirname $0`/py/webserver.py ${PUBLIC} 2> /dev/null &
+    webserverPID=$!
 fi
 
 cp `dirname $0`/index.html ${PUBLIC}
