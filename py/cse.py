@@ -55,7 +55,8 @@ INPUT_DWI_BASE = ""
 BDP_BASE_DIRECTORY = "DWI"
 STATUS_FILEPATH = ""
 PUBLIC = ""
-SVREG_AND_BDP = False
+SVREG = False
+BDP = False
 
 CSE_OUTPUTS_DIR="CSE_outputs"
 
@@ -175,7 +176,8 @@ def init():
     global WORKFLOW_NAME
     global STATUS_FILEPATH
     global PUBLIC
-    global SVREG_AND_BDP
+    global SVREG
+    global BDP
     BRAINSUITE_ATLAS_DIRECTORY = find_executable('bse')[:-3] + '../atlas/'
 
     version_msg = "%prog 1.0"
@@ -191,8 +193,8 @@ def init():
 
     parser = OptionParser(version=version_msg, usage=usage_msg)
     options, args = parser.parse_args(sys.argv[1:])
-    if len(args) != 5:
-        parser.error("Expected exactly 5 arguments, got %s" % len(args))
+    if len(args) != 6:
+        parser.error("Expected exactly 6 arguments, got %s" % len(args))
         return False
     
 
@@ -202,7 +204,8 @@ def init():
     INPUT_DWI_BASE = os.path.abspath(args[1])
     WORKFLOW_BASE_DIRECTORY = os.path.abspath(args[2])
     PUBLIC = os.path.abspath(args[3])
-    SVREG_AND_BDP = args[4].lower() in ("yes", "true", "y", "1")
+    BDP = args[4].lower() in ("yes", "true", "y", "1")
+    SVREG = args[5].lower() in ("yes", "true", "y", "1")
 
     SUBJECT_ID = os.path.basename(os.path.normpath(WORKFLOW_BASE_DIRECTORY))
     WORKFLOW_NAME = SUBJECT_ID + WORKFLOW_SUFFIX
@@ -397,35 +400,39 @@ def runWorkflow():
     brainsuite_workflow.connect(hemisplitObj, 'outputLeftPialHemisphere', ds, CSE_OUTPUTS_DIR + '.@17')
     brainsuite_workflow.connect(hemisplitObj, 'outputRightPialHemisphere', ds, CSE_OUTPUTS_DIR + '.@18')
 
-
-    if SVREG_AND_BDP:
+    if BDP:
         bdpObj = pe.Node(interface=bs.BDP(), name='BDP')
-        svregObj = pe.Node(interface=bs.SVReg(), name='SVREG')
-
         bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + SUBJECT_ID + '_T1w'
-        svregInputBase =  WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + SUBJECT_ID + '_T1w'
 
         #bdp inputs that will be created. We delay execution of BDP until all CSE and datasink are done
         bdpObj.inputs.bfcFile = bdpInputBase + '.bfc.nii.gz'
         bdpObj.inputs.inputDiffusionData = INPUT_DWI_BASE + '.nii.gz'
         bdpObj.inputs.BVecBValPair = [ INPUT_DWI_BASE + '.bvec' , INPUT_DWI_BASE + '.bval' ]
         bdpObj.inputs.outputSubdir = BDP_BASE_DIRECTORY
+
+        brainsuite_workflow.connect(ds, 'out_file', bdpObj, 'dataSinkDelay')
+
+    if SVREG:
+        svregObj = pe.Node(interface=bs.SVReg(), name='SVREG')
+        svregInputBase =  WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + SUBJECT_ID + '_T1w'
+
         #svreg inputs that will be created. We delay execution of SVReg until all CSE and datasink are done
         svregObj.inputs.subjectFilePrefix = svregInputBase
 
-        brainsuite_workflow.connect(ds, 'out_file', bdpObj, 'dataSinkDelay')
         brainsuite_workflow.connect(ds, 'out_file', svregObj, 'dataSinkDelay')
     
 
     brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
-    
-    if SVREG_AND_BDP:
+
+    if BDP:
         #bdp command: volblend -i <t1w.nii.gz> -r dwi/<id>_t1w.dwi.ras.correct.fa.color.t1_coord.nii.gz -o <outfile> --view 3 --slice 60
-        #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
         updateStatusFile(WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + BDP_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w.dwi.RAS.correct.FA.color.T1_coord.nii.gz', INPUT_MRI_FILE, None, STATUS_FILEPATH, 12, PUBLIC)
+    
+    if SVREG:
+        #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
         updateStatusFile(svregInputBase + '.right.pial.cortex.svreg.dfs', None, None, STATUS_FILEPATH, 13, PUBLIC)
 
-    #Processing completed successfully. Change 11 to 110 or 13 to 130 to indicate completion
+    #Processing completed successfully. Change 11 to 110, 12 to 120, 13 to 130 to indicate completion
     f = open(STATUS_FILEPATH, "r")
     finalStatus = int(f.read()) * 10
     f.close()

@@ -85,39 +85,52 @@ initAndProcess () {
     dwiBase=$3
     demographics=$4
 
-    echo "=======${id}======="
+    echo "==========${id}=========="
 
-    svregAndBDP=1
+    svreg=1
+    bdp=1
     if [ ${a_c} -eq  1 ]
     then
-        svregAndBDP=0;
+        svreg=0
+        bdp=0
     fi
 
-    if [ ${svregAndBDP} -eq 1 ]
+    if [ ${bdp} -eq 1 ]
     then
         dwiPrefixes=( '.bval' '.bvec' '.nii.gz' )
         for prefix in "${dwiPrefixes[@]}"
         do
             if [ ! -e ${dwiBase}${prefix} ]
             then
-                echo "File ${dwiBase}${prefix} does not exist. Turned SVReg and BDP off"
-                svregAndBDP=0
+                echo "File ${dwiBase}${prefix} does not exist. Turned BDP off"
+                bdp=0
                 break
             fi
         done
         
     fi
-    
+
+    willProcess="CSE"
+    if [ ${bdp} -eq 1 ]
+    then
+        willProcess="${willProcess} BDP"
+    fi
+
+    if [ ${svreg} -eq 1 ]
+    then
+        willProcess="${willProcess} SVReg"
+    fi
+
+    echo "Processing will perform: ${willProcess}"
+
     if [ ${a_t} -eq 1 ]
     then
-        if [ ${svregAndBDP} -eq 1 ]
-        then
-            echo "CSE SVReg BDP: ${dataFile}"
-        else
-            echo "CSE: ${dataFile}"
-        fi
+        echo "${dataFile}"
+        echo "=========================================="
+        echo ""
         return 0
     fi
+
 
     if [ ! -e ${dataFile} ]
     then
@@ -152,18 +165,12 @@ initAndProcess () {
 
     if [ $noQsub -eq 0 ]
     then
-        qsub -o $logFile -e $logErrFile `dirname $0`/cseQsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${svregAndBDP}
+        qsub -o $logFile -e $logErrFile `dirname $0`/cseQsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${bdp} ${svreg}
     else
         echo "Registered local background process for file: ${dataFile}"
-        `dirname $0`/cseQsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${svregAndBDP} > $logFile 2> $logErrFile &
+        `dirname $0`/cseQsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${bdp} ${svreg} > $logFile 2> $logErrFile &
     fi
 
-    if [ ${svregAndBDP} -eq 1 ]
-    then
-        echo "Processing will perform: CSE SVReg BDP"
-    else
-        echo "Processing will perform: CSE"
-    fi
     echo "=========================================="
     echo ""
 }

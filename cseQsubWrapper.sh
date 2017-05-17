@@ -11,5 +11,5 @@
 export TMPDIR=/ifs/tmp/
 export TMP=/ifs/tmp/
 
-python $1/py/cse.py $2 $3 $4 $5 $6
+python $1/py/cse.py $2 $3 $4 $5 $6 $7
 

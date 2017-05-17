@@ -38,7 +38,7 @@ ALL_DONE = False
 
 #Maps the done codes to the state codes that should be put into brainsuite_state.json.
 #Mainly for stopping this script and support of no SVReg/BDP vs yes SVReg/BDP
-DONE_MAPPING = {"130": "13", "110": "11"}
+DONE_MAPPING = {"110": "11", "120": "12", "130": "13"}
 
 #For timing
 START_TIME = None
