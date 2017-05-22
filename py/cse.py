@@ -315,11 +315,11 @@ def runWorkflow():
     
     
 
-
-    brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bfcObj, 'inputMRIFile')
+    bfcObj.inputs.inputMRIFile = INPUT_MRI_FILE
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', bfcObj, 'inputMaskFile')
     bseDoneWrapper.inputs.connectFile = INPUT_MRI_FILE
     brainsuite_workflow.connect(bseObj, 'outputMaskFile', bseDoneWrapper, 'secondaryFile')
-    brainsuite_workflow.connect(bseObj, 'outputMRIVolume', bseDoneWrapper, 'statsFiles')
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', bseDoneWrapper, 'statsFiles')
     
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', pvcObj, 'inputMRIFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', bfcDoneWrapper, 'connectFile')
@@ -380,8 +380,7 @@ def runWorkflow():
     ds.inputs.base_directory = WORKFLOW_BASE_DIRECTORY
     
     #**DataSink connections**
-    brainsuite_workflow.connect(bseObj, 'outputMRIVolume', ds, CSE_OUTPUTS_DIR)
-    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR + '.@1')
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR)
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, CSE_OUTPUTS_DIR + '.@2')
     brainsuite_workflow.connect(pvcObj, 'outputLabelFile', ds, CSE_OUTPUTS_DIR + '.@3')
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', ds, CSE_OUTPUTS_DIR + '.@4')
