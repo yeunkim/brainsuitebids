@@ -1,24 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-cse.py
-
-Python script to run BrainSuite Cortical Surface Extraction routine
-To be called after validating data structure using checks.py
-
-Returns:
-    0 on successful processing run
-    1 on failure
-
-Usage:
-python cse.py T1wFile DerivativeBase public_html
-
-T1wFile is the T1 weighted MRI file for the subject
-DerivativeBase is this subject's base directory under the derivatives directory
-public_html is the base directory where we may save thumbnails, statistics
-Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/derivatives/1003
-"""
-
-
 from __future__ import unicode_literals, print_function
 from builtins import str
 
@@ -40,7 +20,37 @@ from optparse import OptionParser
 
 from distutils.spawn import find_executable
 
-CSE_STEPS = [""]
+usage_msg = """
+%prog InputT1wFile InputDWIBase WorkflowBaseDir PublicDir RunBDP RunSVREG
+
+Python script to run BrainSuite Cortical Surface Extraction (CSE),
+Surface Volume Registration (SVReg), and Brain Diffusion Pipeline (BDP)
+
+Argument description:
+InputT1wFile
+    Input MRI file, .nii.gz format. Filename must match:
+    sub-<subID>[_ses-<sesID>]_T1w.nii.gz.
+InputDWIBase
+    Base directory that contains these 3 files:
+    <subID>[_ses-<sesID]_dwi.{bval|bvec|nii.gz}
+WorkflowBaseDir
+    Subject's base directory where statusFile, cse output directory, and
+    nipype workflow directory will be created.
+    run.sh will pass subject's base directory under the derivatives directory.
+PublicDir
+    Base public directory. Will store files in publicDir/statistics or 
+    publicDir/thumbnails. 
+    (will attempt to create subdirectories if they do not exit already)
+RunBDP
+    {yes, true, y, 1} indicates if workflow should run BDP.
+RunSVREG
+    {yes, true, y, 1} indicates if workflow should run SVReg.
+
+"""
+
+#TODO Make stats executable return value more robust. (Do something with return value of the exec)
+#TODO check directory existance and create directory if needed
+
 
 ATLAS_MRI_SUFFIX = 'brainsuite.icbm452.lpi.v08a.img'
 ATLAS_LABEL_SUFFIX = 'brainsuite.icbm452.v15a.label.img'
@@ -60,11 +70,7 @@ BDP = False
 
 CSE_OUTPUTS_DIR="CSE_outputs"
 
-CURRENT_STATUS = 0
 STATUSFILE = "status.txt"
-RUNTIME_EXCEPTION_CODE = -5 #Update statusFile with this code to indicate runtime error during Nipype processing
-
-WORKFLOW_SUCCESS = 0
 
 def updateStatusFile(connectFile, secondaryFile, statsFiles, statusPath, status, public):
     """
@@ -162,12 +168,36 @@ def updateStatusFile(connectFile, secondaryFile, statsFiles, statusPath, status,
     f.write("%d" % status)
     f.close()
 
+def parseInputFilename(fname):
+    """Return <subID>[_ses-<sesID>] if fname matches: sub-<subID>[_ses-<sesID>]_T1w.nii.gz. None otherwise"""
+    fname = os.path.basename(fname)
+    if len(fname) <= len("sub-_T1w.nii.gz"):
+        return None
+
+    prefix = "sub-"
+    suffix = "_T1w.nii.gz"
+
+    if not (fname.startswith(prefix) and fname.endswith(suffix)):
+        return None
+
+    return fname[0:len(fname) - len(suffix)]
 
 def init():
     """
     Reads in argument, sets globals to be used in workflow processing
     :return:
     """
+
+    version_msg = "%prog 1.0"
+
+    numArgs = 6
+    parser = OptionParser(version=version_msg, usage=usage_msg)
+    options, args = parser.parse_args(sys.argv[1:])
+
+    if len(args) != numArgs:
+        parser.error("Expected exactly %d arguments, got %d" % (numArgs, len(args)))
+        exit(1)
+
     global INPUT_MRI_FILE
     global INPUT_DWI_BASE
     global BRAINSUITE_ATLAS_DIRECTORY
@@ -180,24 +210,6 @@ def init():
     global BDP
     BRAINSUITE_ATLAS_DIRECTORY = find_executable('bse')[:-3] + '../atlas/'
 
-    version_msg = "%prog 1.0"
-    usage_msg = """
-    %prog T1wFile DerivativeBase
-
-    T1wFile is the T1 weighted MRI file for the subject
-    DerivativeBase is this subject's base directory under the derivatives directory
-    Example: %prog ~/Documents/studies/ds225/1003/1003_T1w.nii.gz ~/Documents/studies/ds225/derivatives/1003
-    Expecets no trailing slash
-    """
-
-
-    parser = OptionParser(version=version_msg, usage=usage_msg)
-    options, args = parser.parse_args(sys.argv[1:])
-    if len(args) != 6:
-        parser.error("Expected exactly 6 arguments, got %s" % len(args))
-        return False
-    
-
     #TODO: Add auto parsing of a brainsuite settings file, if file exists (this is a possible nice feature)
     
     INPUT_MRI_FILE = os.path.abspath(args[0])
@@ -207,8 +219,9 @@ def init():
     BDP = args[4].lower() in ("yes", "true", "y", "1")
     SVREG = args[5].lower() in ("yes", "true", "y", "1")
 
-    SUBJECT_ID = os.path.basename(os.path.normpath(WORKFLOW_BASE_DIRECTORY))
+    SUBJECT_ID = parseInputFilename(INPUT_MRI_FILE)
     WORKFLOW_NAME = SUBJECT_ID + WORKFLOW_SUFFIX
+
 
     STATUS_FILEPATH = WORKFLOW_BASE_DIRECTORY + os.sep + STATUSFILE
 
@@ -442,16 +455,8 @@ def runWorkflow():
     #Print message when all processing is complete.
     print('Processing for subject %s has completed. Nipype workflow is located at: %s' % (SUBJECT_ID, WORKFLOW_BASE_DIRECTORY))
 
-    global WORKFLOW_SUCCESS
-    WORKFLOW_SUCCESS = 1
-
 
 if __name__ == "__main__":
     init()
     runWorkflow()
-
-    if not WORKFLOW_SUCCESS == 1:
-        #TODO: update with error code
-        exit(1)
-
     exit(0)
