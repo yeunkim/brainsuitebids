@@ -61,7 +61,6 @@ SUBJECT_ID = ""
 WORKFLOW_NAME = ""
 WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name.
 INPUT_MRI_FILE = ""
-HARDCODE_MASK_FILE = ""
 INPUT_DWI_BASE = ""
 BDP_BASE_DIRECTORY = "DWI"
 STATUS_FILEPATH = ""
@@ -200,7 +199,6 @@ def init():
         exit(1)
 
     global INPUT_MRI_FILE
-    global HARDCODE_MASK_FILE
     global INPUT_DWI_BASE
     global BRAINSUITE_ATLAS_DIRECTORY
     global WORKFLOW_BASE_DIRECTORY
@@ -226,7 +224,6 @@ def init():
 
 
     STATUS_FILEPATH = WORKFLOW_BASE_DIRECTORY + os.sep + STATUSFILE
-    HARDCODE_MASK_FILE = os.path.dirname(INPUT_MRI_FILE) + os.sep + SUBJECT_ID + ".mask1.nii.gz"
 
 def runWorkflow():
     """
@@ -238,6 +235,7 @@ def runWorkflow():
     brainsuite_workflow.base_dir=WORKFLOW_BASE_DIRECTORY
 
 
+    bseObj = pe.Node(interface=bs.Bse(), name='BSE')
     bfcObj = pe.Node(interface=bs.Bfc(),name='BFC')
     pvcObj = pe.Node(interface=bs.Pvc(), name = 'PVC')
     cerebroObj = pe.Node(interface=bs.Cerebro(), name='CEREBRO')
@@ -252,11 +250,17 @@ def runWorkflow():
     
     #=====Inputs=====
 
+    #Provided input file 
+    bseObj.inputs.inputMRIFile = INPUT_MRI_FILE
     #Provided atlas files
     cerebroObj.inputs.inputAtlasMRIFile =(BRAINSUITE_ATLAS_DIRECTORY + ATLAS_MRI_SUFFIX)
     cerebroObj.inputs.inputAtlasLabelFile = (BRAINSUITE_ATLAS_DIRECTORY + ATLAS_LABEL_SUFFIX)
     
     #====Parameters====
+    bseObj.inputs.diffusionIterations = 5
+    bseObj.inputs.diffusionConstant = 30 #-d
+    bseObj.inputs.edgeDetectionConstant = 0.78 #-s
+
     cerebroObj.inputs.useCentroids = True
     pialmeshObj.inputs.tissueThreshold = 0.3
 
@@ -285,6 +289,7 @@ def runWorkflow():
                                    interface=Function(input_names=["connectFile", "secondaryFile", "statsFiles", "statusPath", "status", "public"], output_names=[],function=updateStatusFile))
     
 
+    bseDoneWrapper.inputs.statusPath = STATUS_FILEPATH
     bfcDoneWrapper.inputs.statusPath = STATUS_FILEPATH
     pvcDoneWrapper.inputs.statusPath = STATUS_FILEPATH
     cerebroDoneWrapper.inputs.statusPath = STATUS_FILEPATH
@@ -297,6 +302,7 @@ def runWorkflow():
     hemisplitDoneWrapper.inputs.statusPath = STATUS_FILEPATH
     
 
+    bseDoneWrapper.inputs.public = PUBLIC
     bfcDoneWrapper.inputs.public = PUBLIC
     pvcDoneWrapper.inputs.public = PUBLIC
     cerebroDoneWrapper.inputs.public = PUBLIC
@@ -308,6 +314,7 @@ def runWorkflow():
     pialmeshDoneWrapper.inputs.public = PUBLIC
     hemisplitDoneWrapper.inputs.public = PUBLIC
     
+    bseDoneWrapper.inputs.status = 1
     bfcDoneWrapper.inputs.status = 2
     pvcDoneWrapper.inputs.status = 3
     cerebroDoneWrapper.inputs.status = 4
@@ -322,8 +329,10 @@ def runWorkflow():
     
 
     bfcObj.inputs.inputMRIFile = INPUT_MRI_FILE
-    bfcObj.inputs.inputMaskFile = HARDCODE_MASK_FILE
-    updateStatusFile(INPUT_MRI_FILE, HARDCODE_MASK_FILE, HARDCODE_MASK_FILE, STATUS_FILEPATH, 1, PUBLIC)
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', bfcObj, 'inputMaskFile')
+    bseDoneWrapper.inputs.connectFile = INPUT_MRI_FILE
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', bseDoneWrapper, 'secondaryFile')
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', bseDoneWrapper, 'statsFiles')
     
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', pvcObj, 'inputMRIFile')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', bfcDoneWrapper, 'connectFile')
@@ -384,7 +393,8 @@ def runWorkflow():
     ds.inputs.base_directory = WORKFLOW_BASE_DIRECTORY
     
     #**DataSink connections**
-    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, CSE_OUTPUTS_DIR)
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR)
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, CSE_OUTPUTS_DIR + '.@2')
     brainsuite_workflow.connect(pvcObj, 'outputLabelFile', ds, CSE_OUTPUTS_DIR + '.@3')
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', ds, CSE_OUTPUTS_DIR + '.@4')
     brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', ds, CSE_OUTPUTS_DIR + '.@5')
