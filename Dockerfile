@@ -40,7 +40,7 @@ RUN wget -q users.bmap.ucla.edu/~jwong/private/BrainSuite16a1.linux.tgz --user j
     chmod +x /BrainSuite16a1/bin/dfsrender && \
     chmod -R ugo+r /BrainSuite16a1 && \
     cd / && \
-    rm BrainSuite16a1.linux.tgz 
+    rm BrainSuite16a1.linux.tgz
 
 # Stats Executables
 RUN cd /BrainSuite16a1/bin && \
@@ -58,4 +58,5 @@ ADD . /qc-system
 RUN find ./qc-system -type f | xargs -I {} sed -i -e 's/\r$//' {}
 
 # TODO remove options used in testing
-CMD ./qc-system/run.sh -d /data -w -i 402
+ENTRYPOINT ["./qc-system/run.sh"]
+CMD ["-d", "/data", "-w"]
