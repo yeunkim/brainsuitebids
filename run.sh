@@ -22,12 +22,16 @@ Optional settings:
     [default: <dataset>/derivatives, where <dataset> is input to -d]
 
 -w
-    set up a basic web server to serve files from public directory
+    set up a basic web server to serve files from public directory.
+    web server defaults to port 8080, increments port number if
+    if 8080 is unavailable, until available port is found.
 
--c
-    run CSE only, skipping SVReg and BDP even if dwi data is provided
-    If not set, will check for dwi data and will run SVReg and BDP if
-    dwi data found, checking for each subject individually
+-r <processing_steps>
+    Controls what processing will be done in addition to CSE.
+    If BDP is enabled, will first check for dwi data; if dwi data is
+    not found, BDP will be disabled.
+    <processing_steps> must be one of: {bdp, svreg, none, all}
+    [default: all]
 
 -i <regex>
     provide a regex to filter subjects by subjectID. Only subjects whose 
@@ -87,13 +91,8 @@ initAndProcess () {
 
     echo "==========${id}=========="
 
-    svreg=1
-    bdp=1
-    if [ ${a_c} -eq  1 ]
-    then
-        svreg=0
-        bdp=0
-    fi
+    svreg=${a_r_svreg}
+    bdp=${a_r_bdp}
 
     if [ ${bdp} -eq 1 ]
     then
@@ -216,14 +215,18 @@ a_gotOption=0
 a_d=0
 a_p=0
 a_w=0
-a_c=0
+
+a_r_svreg=1 #Default on
+a_r_bdp=1 #Default on
+
 a_i=0
 a_s=0
 a_t=0
 webserverPID=-1
 noQsub=0
 
-while getopts ":d:p:wci:s:tl" opt; do
+
+while getopts ":d:p:wr:i:s:tl" opt; do
     a_gotOption=1
     case $opt in
         \?)
@@ -253,8 +256,29 @@ while getopts ":d:p:wci:s:tl" opt; do
         w)
             a_w=1
             ;;
-        c)
-            a_c=1
+        r)
+            a_r_tolower=`echo $OPTARG |  tr '[:upper:]' '[:lower:]'`
+
+            if [ ${a_r_tolower} == "bdp" ]
+            then
+                a_r_svreg=0
+                a_r_bdp=1
+            elif [ ${a_r_tolower} == "svreg" ]
+            then
+                a_r_svreg=1
+                a_r_bdp=0
+            elif [ ${a_r_tolower} == "none" ]
+            then
+                a_r_svreg=0
+                a_r_bdp=0
+            elif [ ${a_r_tolower} == "all" ]
+            then
+                a_r_svreg=1
+                a_r_bdp=1
+            else
+                echo "Usage Error: Argument to -r must be one of: {bdp, svreg, none, all}" 
+                exit 1
+            fi
             ;;
         i)
             check_duplicate_option $a_i $opt
