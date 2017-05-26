@@ -109,6 +109,7 @@
 
     <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
     <script type="text/javascript">
+    //<![CDATA[
         var BASE_URL = "";
         var JSON_PATH = "/brainsuite_state.json";
         var STATS_JSON_PATH = "/statistics_base.json";
@@ -149,7 +150,7 @@
         var STATS_RELATIVEPATH;
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
-        var errorLevels = [];
+        var errorLevelsAbsval = [];
 
         var statsCache = [];
         var demographics = [];
@@ -193,7 +194,7 @@
                             for(var i = 0 ; i < Object(json.subjects).length; i++){
                                 subjects.push(json.subjects[i].name);
                                 subjectStates.push(-1);
-                                errorLevels.push(0);
+                                errorLevelsAbsval.push(0);
                             }
                             //Stats cache
                             for(var i = 0 ; i < Object(json.subjects).length; i++){
@@ -573,13 +574,13 @@
                     var stepErrorLevel = statsCache[subjectIndex][stateLoop]["Values"][0]["Z-Score"];
                     stepErrorLevel = Math.abs(stepErrorLevel);
 
-                    if(stepErrorLevel > errorLevels[subjectIndex]){
+                    if(stepErrorLevel > errorLevelsAbsval[subjectIndex]){
                         if(stepErrorLevel <= 2 && stepErrorLevel > 1){
                             $("#img" + subjectIndex).css("border-color", "yellow");
                         }else if(stepErrorLevel > 2){
                             $("#img" + subjectIndex).css("border-color", "red");
                         }
-                        errorLevels[subjectIndex] = stepErrorLevel;
+                        errorLevelsAbsval[subjectIndex] = stepErrorLevel;
                     }
                 }
             }
@@ -618,7 +619,7 @@
 
                     var showPct = 0;
                     showPct = (stateToShow / (SHORT_NAMES.length - 1)) / statePct;
-                    document.getElementById("progressShown" + subjectIndex).style.left = 100 * showPct + "%";
+                    document.getElementById("progressShown" + subjectIndex).style.left = (100 * showPct) + "%";
                 }
             }
             
@@ -749,6 +750,37 @@
             setStatus("initializing images");
         }
 
+        /*
+         *  errorLevel: 0:green, 1:yellow, 2:red
+         *  makeVisible: true, will make visible. False, will hide
+        */
+        function checkboxChangeVisibility(errorLevel, makeVisible){
+            var lowerRange;
+            var upperRange;
+
+            if(errorLevel === 0){
+                lowerRange = -1;
+                upperRange = 1;
+            }else if(errorLevel === 1){
+                lowerRange = 1;
+                upperRange = 2;
+            }else{
+                lowerRange = 2;
+                upperRange = Number.POSITIVE_INFINITY;
+            }
+
+            $("#gallery").find("li").each(function(){
+                var subjectIndex = parseInt($(this).attr("id").substring("li".length));
+                if(errorLevelsAbsval[subjectIndex] > lowerRange && errorLevelsAbsval[subjectIndex] <= upperRange){
+                    if(makeVisible){
+                        $(this).show(500);
+                    }else{
+                        $(this).hide(500);
+                    }
+                }
+            });
+        }
+        
         $(document).ready(function(){
             
             $(function () {
@@ -799,6 +831,19 @@
                 }
             });
 
+            $("#checkboxDiv").find("input[type='checkbox']").checkboxradio();
+            $("#checkGreen").change(function(){
+                checkboxChangeVisibility(0, this.checked);
+            });
+
+            $("#checkYellow").change(function(){
+                checkboxChangeVisibility(1, this.checked);
+            });
+
+            $("#checkRed").change(function(){
+                checkboxChangeVisibility(2, this.checked);
+            });
+
             //Init button on click to show/hide help
             $("#showHelp").click(function(){
                 $("#help").toggle("blind", {}, 500);
@@ -806,6 +851,7 @@
 
             startTimer();
         });
+    //]]>
     </script>
     <!--/////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
 
@@ -833,6 +879,19 @@
             <div style="width:75%">
                 <span>Show Stage</span>
                 <div id = "slider_showstage"></div>
+            </div>
+            <div id="checkboxDiv" style="text-align:center">
+                <fieldset style="border:0;">
+                    <legend align="center">Filter subjects by</legend>
+                    <label for="checkGreen">Correct</label>
+                    <input type="checkbox" checked="checked" name="checkGreen" id="checkGreen">
+
+                    <label for="checkYellow">Moderate Error</label>
+                    <input type="checkbox" checked="checked" name="checkYellow" id="checkYellow">
+
+                    <label for="checkRed">Substantial Error</label>
+                    <input type="checkbox" checked="checked" name="checkRed" id="checkRed">
+                </fieldset>
             </div>
             <div style="text-align: center;">
                 <button id="showHelp" class="ui-button ui-widget ui-corner-all">
