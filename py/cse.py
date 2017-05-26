@@ -164,9 +164,21 @@ def updateStatusFile(connectFile, secondaryFile, statsFiles, statusPath, status,
 
     print("Saving thumbnail at: %s" % outputPNGFile)
 
-    f = open(statusPath, "w")
-    f.write("%d" % status)
-    f.close()
+    shouldUpdate = False
+
+    if os.path.isfile(statusPath):
+        rfile = open(statusPath, "r")
+        currStatus = int(rfile.read())
+        rfile.close()
+        if status > currStatus:
+            shouldUpdate = True
+    else:
+        shouldUpdate = True
+
+    if shouldUpdate:
+        f = open(statusPath, "w")
+        f.write("%d" % status)
+        f.close()
 
 def parseInputFilename(fname):
     """Return <subID>[_ses-<sesID>] if fname matches: sub-<subID>[_ses-<sesID>]_T1w.nii.gz. None otherwise"""
