@@ -141,6 +141,7 @@
         const DEFAULT_SHOWSTAGE = PROCESS_NAMES.length - 1
 
         var selectedSubjectIndex = 0;
+        var clickedStepForDialog = 0;
         var ajaxLock = false;
         var THUMBNAILS_ABSPATH;
         var THUMBNAILS_RELATIVEPATH;
@@ -476,8 +477,8 @@
 
                     //$("#trayDialog").dialog("option", "height", $(window).height() * 0.7);
                     
-                    var clickedStepNum = $(this).attr("imgStepNum");
-                    if(clickedStepNum == 1 || clickedStepNum == 3){
+                    clickedStepForDialog = $(this).attr("imgStepNum");
+                    if(clickedStepForDialog == 1 || clickedStepForDialog == 3){
                         dialog_stdev($(this));
                     }else{
                         dialog_none($(this));
@@ -486,6 +487,12 @@
                     
                     $("#trayDialog").dialog("open");
                 });
+            }
+
+            if($("#trayDialog").dialog("isOpen") === true){
+                var stepNumToTrigger = Math.min(subjectState, clickedStepForDialog);
+                var trayThumbnailSelector = "img[imgStepNum='" + stepNumToTrigger + "']";
+                $("#trayThumbnails").find(trayThumbnailSelector).first().trigger("click");
             }
         }
 
