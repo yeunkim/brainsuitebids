@@ -619,7 +619,8 @@
 
                     var showPct = 0;
                     showPct = (stateToShow / (SHORT_NAMES.length - 1)) / statePct;
-                    document.getElementById("progressShown" + subjectIndex).style.left = (100 * showPct) + "%";
+                    document.getElementById("progressShown" + subjectIndex).style.left = (100 * showPct - 5) + "%";
+
                 }
             }
             
