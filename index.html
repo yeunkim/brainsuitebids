@@ -149,6 +149,7 @@
         var STATS_RELATIVEPATH;
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
+        var errorLevels = [];
 
         var statsCache = [];
         var demographics = [];
@@ -192,6 +193,7 @@
                             for(var i = 0 ; i < Object(json.subjects).length; i++){
                                 subjects.push(json.subjects[i].name);
                                 subjectStates.push(-1);
+                                errorLevels.push(0);
                             }
                             //Stats cache
                             for(var i = 0 ; i < Object(json.subjects).length; i++){
@@ -240,7 +242,7 @@
             for(var i = 0 ; i < subjects.length ; i++){
                 galleryHTML +=
                     `<li id="li${i}" style="border:2px solid black;">
-                        <img id="img${i}" height="128px" style="cursor: pointer;" onclick="loadSubjTray(${i})" />
+                        <img id="img${i}" height="128px" style="cursor: pointer; border-bottom:5px solid black;" onclick="loadSubjTray(${i})" />
                         <p class="subjtext" id="text${i}">${subjects[i]}<br>Initializing</p>
                         <div class="progressbar">
                             <div class="progressCompleted" id="progress${i}">
@@ -376,6 +378,28 @@
             addTo["Z-Score"] = zScore;
         }
 
+        function loadIntoStatsCache(subjectIndex, stage){
+            if(statsCache[subjectIndex][stage] === undefined){
+                $.ajax({
+                    cache:false,
+                    url: makeStatsURL(subjectIndex, stage),
+                    dataType: "json",
+                    async: false,
+                    success: function(json){
+                        if(json["stat_type"] === "stdev"){
+                            for(var sIndex = 0 ; sIndex < json["Values"].length ; sIndex++){
+                                var stepAfter = json["Measured After"];
+                                var statName = json["Values"][sIndex]["name"];
+                                computeZscore(demographics[subjectIndex], STATS_JSON[stepAfter][statName], json["Values"][sIndex]);
+                            }
+                        }
+
+                        statsCache[subjectIndex][stage] = json;
+                    }
+                });
+            }
+        }
+
         /**
          *
          * @param id Pass in INDEX of selected subject
@@ -431,25 +455,8 @@
                 divToAdd.css("display", "inline-block");
                 divToAdd.css("vertical-align", "bottom");
 
-                if(statsCache[selectedSubjectIndex][i] === undefined){
-                    $.ajax({
-                        cache:false,
-                        url: makeStatsURL(selectedSubjectIndex, i),
-                        dataType: "json",
-                        async: false,
-                        success: function(json){
-                            if(json["stat_type"] === "stdev"){
-                                for(var sIndex = 0 ; sIndex < json["Values"].length ; sIndex++){
-                                    var stepAfter = json["Measured After"];
-                                    var statName = json["Values"][sIndex]["name"];
-                                    computeZscore(demographics[selectedSubjectIndex], STATS_JSON[stepAfter][statName], json["Values"][sIndex]);
-                                }
-                            }
+                loadIntoStatsCache(selectedSubjectIndex, i);
 
-                            statsCache[selectedSubjectIndex][i] = json;
-                        }
-                    });
-                }
                 
                 if(i == 1 || i == 3){
                     //TODO HARDCODE of first value
@@ -556,6 +563,28 @@
             $("#subjectCount").html(n);
         }
 
+        function updateErrorLevelAndBorder(subjectIndex, maxState){
+            for(var stateLoop = 0 ; stateLoop <= maxState ; stateLoop++){
+                if(stateLoop === 1 || stateLoop === 3){
+                    //TODO hardcode 1 or 3
+
+                    loadIntoStatsCache(subjectIndex, stateLoop);
+
+                    var stepErrorLevel = statsCache[subjectIndex][stateLoop]["Values"][0]["Z-Score"];
+                    stepErrorLevel = Math.abs(stepErrorLevel);
+
+                    if(stepErrorLevel > errorLevels[subjectIndex]){
+                        if(stepErrorLevel <= 2 && stepErrorLevel > 1){
+                            $("#img" + subjectIndex).css("border-color", "yellow");
+                        }else if(stepErrorLevel > 2){
+                            $("#img" + subjectIndex).css("border-color", "red");
+                        }
+                        errorLevels[subjectIndex] = stepErrorLevel;
+                    }
+                }
+            }
+        }
+
         function updateImages(newStates){
             var maxState = $("#slider_showstage").slider("option", "value");
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
@@ -573,9 +602,8 @@
                             loadSubjTray(selectedSubjectIndex);
                         }
 
-                        
+                        updateErrorLevelAndBorder(subjectIndex, newState);
                         document.getElementById("text" + subjectIndex).innerHTML = subjects[subjectIndex] + "<br/>" + SHORT_NAMES[newState];
-                        
                         document.getElementById("progress" + subjectIndex).style.width = 100 * statePct + "%";
                     }
                     
