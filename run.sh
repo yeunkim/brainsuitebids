@@ -428,13 +428,7 @@ do
 
         done
 
-        #TODO Use real locking mechanism. Can't use nanosec because Mac OS date doesnt support %N
-        subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjAndSes-`date +%Y%m%d-%H%M%S`.txt
-        while [ -e ${subjectsAndSessionsFile} ]
-        do
-            subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjAndSes-`date +%Y%m%d-%H%M%S`.txt
-        done
-
+        subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjAndSes-`date +%Y%m%d-%H%M%S`-$$.txt
         touch ${subjectsAndSessionsFile}
         readingHeader=0
     else
