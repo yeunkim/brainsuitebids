@@ -84,7 +84,7 @@ EOF
 
 
 initAndProcess () {
-    id=$1
+    id=$1 #id and possibly ses
     dataFile=$2
     dwiBase=$3
     demographics=$4
@@ -452,6 +452,7 @@ do
             if [ $sexIndex -ne -1 ]
             then
                 subjSex=`echo "${row[$sexIndex]}" | tr '[:upper:]' '[:lower:]'`
+                subjSex=${subjSex:0:1}
             fi
 
             subjDemographics="$subjAge""$subjSex"
@@ -461,7 +462,7 @@ do
         if [ $isMultiSession -eq -1 ]
         then
             #If subject directory contains folder containing ses-
-            if [[ $(ls ${ARG_DATASET}/${subjID} | grep ses-) ]]
+            if [[ $(ls ${ARG_DATASET}/${subjID} | grep "ses-") ]]
             then
                 isMultiSession=1
             else
