@@ -427,8 +427,14 @@ do
             fi
 
         done
-        subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjectsAndSessions.txt
-        rm -f ${subjectsAndSessionsFile}
+
+        #TODO Use real locking mechanism. Can't use nanosec because Mac OS date doesnt support %N
+        subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjAndSes-`date +%Y%m%d-%H%M%S`.txt
+        while [ -e ${subjectsAndSessionsFile} ]
+        do
+            subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjAndSes-`date +%Y%m%d-%H%M%S`.txt
+        done
+
         touch ${subjectsAndSessionsFile}
         readingHeader=0
     else
@@ -476,7 +482,7 @@ do
             then
                 ls ${ARG_DATASET}/${subjID} | while read s
                 do
-                    if [[ ${s} =~ ${SESSION_REGEX} ]]
+                    if [ -d ${ARG_DATASET}/${subjID}/${s} ] && [[ ${s} =~ ${SESSION_REGEX} ]]
                     then
                         subjAndSesID=${subjID}_${s}
                         subjectDataFile=${ARG_DATASET}/${subjID}/${s}/anat/${subjAndSesID}_T1w.nii.gz
