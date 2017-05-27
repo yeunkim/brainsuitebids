@@ -421,7 +421,14 @@
 
             var subjID = subjects[subjectIndex];
             var subjectState = parseInt(subjectStates[subjectIndex]);
-            var statusString = "<p>ID: " + subjID + "<br/>status:";
+
+            var demographicString = demographics[subjectIndex];
+            if(demographicString === "all"){
+                demographicString = "N/A"
+            }
+            var statusString = "<p>ID: " + subjID + "<br/>";
+            statusString += "Demographic [age][sex]: " + demographicString + "<br/>";
+            statusString += "Status: ";
             if (subjectState < 0){
                 //Invalid state, or init state
                 subjectState = 0;
@@ -431,10 +438,9 @@
                     statusString += ", performing " + PROCESS_NAMES[subjectState + 1];
                 }
             }
-
             statusString += "</p>";
-            $("#trayStatus").html(statusString);
 
+            $("#trayStatus").html(statusString);
 
             $("#trayThumbnails").empty();
             for (var i = 0; i <= subjectState; i++) {
