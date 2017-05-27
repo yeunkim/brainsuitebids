@@ -532,9 +532,6 @@
             if(state < 0){
                 state = 0;
             }
-            if(!THUMBNAIL_SUFFIX[state]){
-                return null;
-            }
             return STATS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + STATS_SUFFIX[state];
         }
         
@@ -546,9 +543,6 @@
         function makeThumbnailURL(subjectIndex, state) {
             if (state < 0){
                 state = 0;
-            }
-            if (!THUMBNAIL_SUFFIX[state]){
-                return null;
             }
             return THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + THUMBNAIL_SUFFIX[state];
         }
@@ -616,9 +610,7 @@
                     
                     var stateToShow = Math.min(newState, maxState);
                     var url = makeThumbnailURL(subjectIndex, stateToShow);;
-                    if (!url){
-                        continue;
-                    }
+
                     if (urlExists(url)) {
                         $("#img" + subjectIndex).attr("src", url);
                     }
