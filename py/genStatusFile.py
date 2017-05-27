@@ -76,17 +76,18 @@ def parseInput():
         print("Error accessing file %s: %s" % (args[0], sys.exc_info()[0]))
         return False
 
-    global DERIVATIVES_BASE_DIRECTORY
-    global PUBLIC
-    DERIVATIVES_BASE_DIRECTORY = os.path.abspath(os.path.dirname(args[0]))
-    PUBLIC = os.path.abspath(args[1])
-
-    subjectNameIndex = -1;
     global SUBJECTS
     for line in participantsFile:
         line = line.strip()
         if line != "":
             SUBJECTS.append(line)
+    
+    participantsFile.close()
+
+    global DERIVATIVES_BASE_DIRECTORY
+    global PUBLIC
+    DERIVATIVES_BASE_DIRECTORY = os.path.abspath(os.path.dirname(args[0]))
+    PUBLIC = os.path.abspath(args[1])
 
     return True
 
