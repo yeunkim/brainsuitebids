@@ -5,7 +5,7 @@ genStatusFile.py
 Parses subjectsFile, then scans all status.txt files indicated by subjectsFile
 Generates json file based on status of each subject
 Saves json file into derivatives/brainsuite_state.json
-Continuously loops until all subjects have completed. See global DONE_MAPPING map
+Continuously loops until all subjects have completed.
 
 returns:
     0 on success
@@ -36,9 +36,7 @@ STATUS_NAME = "status.txt"
 
 ALL_DONE = False
 
-#Maps the done codes to the state codes that should be put into brainsuite_state.json.
-#Mainly for stopping this script and support of no SVReg/BDP vs yes SVReg/BDP
-DONE_MAPPING = {"110": "11", "120": "12", "130": "13"}
+DONE_STATE = "13"
 
 #For timing
 START_TIME = None
@@ -123,12 +121,10 @@ def generateJSON(processingComplete):
         currentState = statusFile.read().strip()
         statusFile.close()
 
-        if currentState in DONE_MAPPING:
-            currentJson['state'] = DONE_MAPPING[currentState]
-        else:
+        if currentState != DONE_STATE:
             seenNotDone = True
-            currentJson['state'] = currentState
 
+        currentJson['state'] = currentState
         subjectsJSONArray.append(currentJson)
 
     j['subjects'] = subjectsJSONArray

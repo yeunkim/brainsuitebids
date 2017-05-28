@@ -64,6 +64,7 @@ INPUT_MRI_FILE = ""
 INPUT_DWI_BASE = ""
 BDP_BASE_DIRECTORY = "DWI"
 STATUS_FILEPATH = ""
+DONE_STATE = 13
 PUBLIC = ""
 SVREG = False
 BDP = False
@@ -456,12 +457,8 @@ def runWorkflow():
         #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
         updateStatusFile(svregInputBase + '.right.pial.cortex.svreg.dfs', None, None, STATUS_FILEPATH, 13, PUBLIC)
 
-    #Processing completed successfully. Change 11 to 110, 12 to 120, 13 to 130 to indicate completion
-    f = open(STATUS_FILEPATH, "r")
-    finalStatus = int(f.read()) * 10
-    f.close()
     f = open(STATUS_FILEPATH, "w")
-    f.write("%d" % finalStatus)
+    f.write("%d" % DONE_STATE)
     f.close()
 
     #Print message when all processing is complete.
