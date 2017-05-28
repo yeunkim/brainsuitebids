@@ -517,6 +517,8 @@ then
     webserverPID=$!
 fi
 
+
+cp `dirname $0`/NA.png ${PUBLIC}/${THUMBNAILS_PATH}
 cp `dirname $0`/index.html ${PUBLIC}
 cp `dirname $0`/icbm100_statistics.json ${PUBLIC}/statistics_base.json #TODO hardcoded
 python `dirname $0`/py/genStatusFile.py ${subjectsAndSessionsFile} ${PUBLIC}

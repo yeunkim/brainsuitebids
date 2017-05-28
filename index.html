@@ -146,6 +146,8 @@
         var ajaxLock = false;
         var THUMBNAILS_ABSPATH;
         var THUMBNAILS_RELATIVEPATH;
+        var NA_FILENAME = "NA.png";
+        var NA_IMGPATH;
         var STATS_ABSPATH;
         var STATS_RELATIVEPATH;
         var subjects = []; //Init subjects from JSON
@@ -188,6 +190,7 @@
                             setStatus(statusString);
                             THUMBNAILS_ABSPATH = json.thumbnails_abspath;
                             THUMBNAILS_RELATIVEPATH = BASE_URL + json.thumbnails_relativepath;
+                            NA_IMGPATH = THUMBNAILS_RELATIVEPATH + "/" + NA_FILENAME;
                             STATS_ABSPATH = json.stats_abspath;
                             STATS_RELATIVEPATH = BASE_URL + json.stats_relativepath;
                             //Init arrays
@@ -539,12 +542,20 @@
             return STATS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + "_demographics.txt";
         }
 
-
+        
+        // Make complete thumbnail URL. Will set URL to NA image if URL not exist.
         function makeThumbnailURL(subjectIndex, state) {
             if (state < 0){
                 state = 0;
             }
-            return THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + THUMBNAIL_SUFFIX[state];
+
+            var ret = THUMBNAILS_RELATIVEPATH + subjects[subjectIndex] + "/" + subjects[subjectIndex] + THUMBNAIL_SUFFIX[state];
+
+            if(urlExists(ret)){
+                return ret;
+            }else{
+                return NA_IMGPATH;
+            }
         }
 
 
@@ -609,11 +620,8 @@
                     }
                     
                     var stateToShow = Math.min(newState, maxState);
-                    var url = makeThumbnailURL(subjectIndex, stateToShow);;
 
-                    if (urlExists(url)) {
-                        $("#img" + subjectIndex).attr("src", url);
-                    }
+                    $("#img" + subjectIndex).attr("src", makeThumbnailURL(subjectIndex, stateToShow));
 
                     var showPct = 0;
                     showPct = (stateToShow / (SHORT_NAMES.length - 1)) / statePct;
