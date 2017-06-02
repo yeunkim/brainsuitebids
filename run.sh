@@ -122,15 +122,6 @@ initAndProcess () {
 
     echo "Processing will perform: ${willProcess}"
 
-    if [ ${a_t} -eq 1 ]
-    then
-        echo "${dataFile}"
-        echo "=========================================="
-        echo ""
-        return 0
-    fi
-
-
     if [ ! -e ${dataFile} ]
     then
         echo "Error: file ${dataFile} does not exist. Skipping this subject."
@@ -139,7 +130,14 @@ initAndProcess () {
         return 
     fi
 
-    
+    if [ ${a_t} -eq 1 ]
+    then
+        echo "${dataFile}"
+        echo "=========================================="
+        echo ""
+        return 0
+    fi
+
     echo ${id} >> ${subjectsAndSessionsFile}
 
     subjectDerivativeBase=${DERIVATIVES_DIR}/${id}
@@ -206,13 +204,13 @@ awkLine(){
         exit 1
     }'`
 }
-
 awkCheckColCountAndHeader(){
     cat $PARTICIPANTS_FILE | sed 's/\r$//g' | sed 's/\r/\n/g' | awk -F $'\t' '
     BEGIN{
         starting=0
         headerNF=-1
         foundError=0
+        participantCol=-1
     }
     {
         if(starting == 0){
@@ -225,6 +223,7 @@ awkCheckColCountAndHeader(){
             for(i=1;i<=NF;i++){
                 if(tolower($i) == "participant_id"){
                     foundParticipantEntry=1;
+                    participantCol=i
                 }
             }
 
@@ -235,7 +234,13 @@ awkCheckColCountAndHeader(){
             }
         }else{
             if(NF != headerNF){
-                printf("Error: participants.tsv header has %d columns, but row %d has %d columns (unequal).\n", headerNF, NR, NF);
+                printf("Error: participants.tsv header has %d columns, but row %d has %d columns. Col count must be equal.\n", headerNF, NR, NF);
+                foundError=1;
+                exit;
+            }
+
+            if(length($participantCol) == 0){
+                printf("Error: participant_id column in row %d is empty.\n", NR);
                 foundError=1;
                 exit;
             }
@@ -249,6 +254,34 @@ awkCheckColCountAndHeader(){
         }
     }
     '
+}
+
+#1: line to awk. 2: col to print. Will echo the col
+awkGetCol(){
+    echo "$1" | awk -F $'\t' -v colToPrint="$2" '{print $colToPrint}'
+}
+
+#Check execuatble in path. **Will exit script if not.**
+checkExecutable(){
+    command -v "$1" > /dev/null 2>&1
+    if [ $? -ne 0 ]
+    then
+        echo "ERROR: Executable $1 required, but not found in system path. Exiting."
+        exit 1
+    fi
+}
+
+
+#Check brainsuite atlas dir exist. Assume bse in path, so call after checking BSE in path
+checkAtlasDir(){
+    local brainsuiteBin=`command -v bse`
+    brainsuiteBin=`dirname "$brainsuiteBin"`
+    local atlasDir="$brainsuiteBin"/../atlas/
+    if [ ! -d "$atlasDir" ]
+    then
+        echo "ERROR: BrainSuite atlas directory does not exist. Exiting. It should be at: ${atlasDir}"
+        exit 1
+    fi
 }
 
 
@@ -381,18 +414,12 @@ then
     exit 1
 fi
 
-if [ $a_p -eq 0 ]
-then
-    PUBLIC=$DERIVATIVES_DIR
-    echo "No public directory was specified using the -p option; will save web files in $PUBLIC"
-fi
-
 if [ $noQsub -eq 1 ]
 then
     echo "-l option was used. Will process jobs locally"
 else
     echo "Checking for qsub in PATH"
-    which qsub > /dev/null 2>&1 
+    command -v qsub > /dev/null 2>&1
     if [ $? -ne 0 ]
     then
         echo "-l option was not used, but qsub was not found in PATH. Will process jobs locally"
@@ -404,6 +431,10 @@ fi
 
 #Done parsing arguments
 
+
+#Checks:
+
+#Participants file exists
 if [ ! -e $PARTICIPANTS_FILE ]
 then
     echo "Error: $PARTICIPANTS_FILE does not exist."
@@ -411,23 +442,40 @@ then
     exit 1
 fi
 
+#Dataset exists
 if [ ! -d $ARG_DATASET ]
 then
-    echo "Error: $ARG_DATASET is not a directory."
+    echo "Error: Dataset directory $ARG_DATASET does not exist."
     echo "For usage instructions, call `basename $0` with no options"
     exit 1
 fi
 
-python `dirname $0`/py/checks.py $PARTICIPANTS_FILE
+
+#executables in path:
+checkExecutable "bse"
+checkExecutable "svreg.sh"
+checkExecutable "bdp.sh"
+checkExecutable "voxelCount"
+checkExecutable "tissueFrac"
+checkExecutable "python"
+
+checkAtlasDir
+
+#Nipype and BrainSuite Nipype interface import checks
+python `dirname $0`/py/checks.py
 if [ $? -ne 0 ]
 then
-    echo "Error. Checks.py failure."
-    echo "Exiting with error code 2"
-    exit 2
+    exit 1
 fi
-#If checks.py passed, we know BIDS dataset is well formatted
 
 #Check existance of PUBLIC directory, create if needed.
+
+
+if [ $a_p -eq 0 ]
+then
+    PUBLIC=$DERIVATIVES_DIR
+    echo "Public Directory: No public directory was specified using -p. Will save web files in $PUBLIC"
+fi
 if [ ! -d ${PUBLIC} ]
 then
     mkdir -p ${PUBLIC}
@@ -438,25 +486,24 @@ then
         exit 1
     fi
 
-    echo "Created directory ${PUBLIC}"
+    echo "Public Directory: Created directory to be used for public files: ${PUBLIC}"
 else
     if [ ! -r ${PUBLIC} ] || [ ! -w ${PUBLIC} ] || [ ! -x ${PUBLIC} ]
     then
-        echo "Error. Lacking read permissions on directory ${PUBLIC}"
-        echo "Exiting with error code 1"
+        echo "Error. Lacking permissions on directory ${PUBLIC}. Exiting."
         exit 1
     fi
     
-    echo "Will be using existing directory ${PUBLIC}"
+    echo "Public Directory: Will be using the existing directory ${PUBLIC}"
 fi
 
-
-#participants.tsv checks:
+#participants.tsv
 awkCheckColCountAndHeader
 if [ $? -ne 0 ]
 then
     exit 1
 fi
+#All checks done
 
 #Parse subjects from PARTICIPANTS_FILE, make qsub calls
 readingHeader=1
@@ -500,31 +547,44 @@ do
         touch ${subjectsAndSessionsFile}
         readingHeader=0
     else
-        subjID=`echo "$line" | awk -F $'\t' -v colToPrint="$participantIndex" '{printf("%s", colToPrint)}'`
+        subjID=`awkGetCol "$line" "$participantIndex"`
         subjDemographics=""
 
-        if [ $ageIndex -eq -1 ] && [ $sexIndex -eq -1 ]
+        subjAge=""
+        subjSex=""
+        if [ $ageIndex -ne -1 ]
         then
-            subjDemographics="all"
-        else
-            subjAge=""
-            subjSex=""
-            if [ $ageIndex -ne -1 ]
+            subjAge=`awkGetCol "$line" "$ageIndex"`
+            if [ ! -z "$subjAge" ]
             then
-                subjAge=`echo "$line" | awk -F $'\t' -v colToPrint="ageIndex" '{printf("%s", colToPrint)}'`
                 subjAge="$(((${subjAge%.*} / 10) * 10))" #Floor to 10's place
             fi
+        fi
 
-            if [ $sexIndex -ne -1 ]
+        if [ $sexIndex -ne -1 ]
+        then
+            subjSex=`awkGetCol "$line" "$sexIndex"`
+            if [ ! -z "$subjSex" ]
             then
-                subjSex=`echo "$line" | awk -F $'\t' -v colToPrint="sexIndex" '{printf("%s", colToPrint)}'`
                 subjSex=`echo "$subjSex" | tr '[:upper:]' '[:lower:]'`
                 subjSex=${subjSex:0:1} #First letter only
             fi
-
-            subjDemographics="$subjAge""$subjSex"
         fi
 
+        subjDemographics="$subjAge""$subjSex"
+        if [ -z "$subjDemographics" ]
+        then
+            subjDemographics="all"
+        fi
+
+
+        if [ ! -d ${ARG_DATASET}/${subjID} ]
+        then
+            echo "==========${subjID}=========="
+            echo "Directory ${ARG_DATASET}/${subjID} does not exist. Skipping this subject"
+            echo "=========================================="
+            continue
+        fi
         
         if [ $isMultiSession -eq -1 ]
         then
