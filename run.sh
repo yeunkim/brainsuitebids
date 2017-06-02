@@ -194,6 +194,64 @@ killWebServer(){
     fi
 }
 
+awkLine(){
+    awkIndex=`echo "$1" | awk -F $'\t' -v searchFor=$2 '
+    {
+        for(i=1;i<=NF;i++){
+            if($i == searchFor){
+                print i;
+                exit 0;
+            }
+        }
+        exit 1
+    }'`
+}
+
+awkCheckColCountAndHeader(){
+    cat $PARTICIPANTS_FILE | sed 's/\r$//g' | sed 's/\r/\n/g' | awk -F $'\t' '
+    BEGIN{
+        starting=0
+        headerNF=-1
+        foundError=0
+    }
+    {
+        if(starting == 0){
+            starting=1;
+            headerNF=NF;
+
+            foundParticipantEntry=0;
+            
+            #Check that header has participant_id column
+            for(i=1;i<=NF;i++){
+                if(tolower($i) == "participant_id"){
+                    foundParticipantEntry=1;
+                }
+            }
+
+            if(foundParticipantEntry == 0){
+                print "Error in participants.tsv file. Header row does not contain a participant_id column";
+                foundError=1;
+                exit;
+            }
+        }else{
+            if(NF != headerNF){
+                printf("Error: participants.tsv header has %d columns, but row %d has %d columns (unequal).\n", headerNF, NR, NF);
+                foundError=1;
+                exit;
+            }
+        }
+    }
+    END{
+        if(foundError == 0){
+            exit 0;
+        }else{
+            exit 1;
+        }
+    }
+    '
+}
+
+
 THUMBNAILS_PATH="/thumbnails"
 STATS_PATH="/statistics"
 STATUS_FILENAME="/status.txt"
@@ -392,6 +450,14 @@ else
     echo "Will be using existing directory ${PUBLIC}"
 fi
 
+
+#participants.tsv checks:
+awkCheckColCountAndHeader
+if [ $? -ne 0 ]
+then
+    exit 1
+fi
+
 #Parse subjects from PARTICIPANTS_FILE, make qsub calls
 readingHeader=1
 participantIndex=-1
@@ -399,42 +465,42 @@ ageIndex=-1 #-1: no age provided. else will be col index
 sexIndex=-1 #-1: no sex provided. else will be col index
 isMultiSession=-1 #-1:undetermined; 1:is multisession 0:not multisession.
 subjectsAndSessionsFile=""
-OLD_IFS=$IFS
-IFS=$'\n'
-for line in `grep -v "^[[:space:]]*$" $PARTICIPANTS_FILE`
+
+
+#sed for DOS file support
+cat $PARTICIPANTS_FILE | sed 's/\r$//g' | sed 's/\r/\n/g' | while read line
 do
+
     if [ ${readingHeader} -eq 1 ]
     then
-        mkdir -p ${DERIVATIVES_DIR}${LOG_PATH}
-        IFS=$'\t ' read -r -a header <<< ${line}
-        for i in "${!header[@]}"
-        do
-            colHeader=`echo ${header[$i]} | tr '[:upper:]' '[:lower:]'`
+        line=`echo "${line}" | tr '[:upper:]' '[:lower:]'`
 
-            if [ $colHeader = "participant_id" ]
-            then
-                participantIndex=$i
-            fi
+        awkIndex=0
 
-            if [ $colHeader = "age" ]
-            then
-                ageIndex=$i
-            fi
+        awkLine "$line" "participant_id"
+        if [ $? -eq 0 ]
+        then
+            participantIndex="$awkIndex"
+        fi
 
-            if [ $colHeader = "sex" ]
-            then
-                sexIndex=$i
-            fi
+        awkLine "$line" "age"
+        if [ $? -eq 0 ]
+        then
+            ageIndex="$awkIndex"
+        fi
 
-        done
+        awkLine "$line" "sex"
+        if [ $? -eq 0 ]
+        then
+            sexIndex="$awkIndex"
+        fi
 
+        mkdir -p "${DERIVATIVES_DIR}""${LOG_PATH}"
         subjectsAndSessionsFile=${DERIVATIVES_DIR}/subjAndSes-`date +%Y%m%d-%H%M%S`-$$.txt
         touch ${subjectsAndSessionsFile}
         readingHeader=0
     else
-        IFS=$'\t '
-        read -r -a row <<< ${line}
-        subjID=${row[$participantIndex]}
+        subjID=`echo "$line" | awk -F $'\t' -v colToPrint="$participantIndex" '{printf("%s", colToPrint)}'`
         subjDemographics=""
 
         if [ $ageIndex -eq -1 ] && [ $sexIndex -eq -1 ]
@@ -445,14 +511,15 @@ do
             subjSex=""
             if [ $ageIndex -ne -1 ]
             then
-                subjAge=${row[$ageIndex]}
+                subjAge=`echo "$line" | awk -F $'\t' -v colToPrint="ageIndex" '{printf("%s", colToPrint)}'`
                 subjAge="$(((${subjAge%.*} / 10) * 10))" #Floor to 10's place
             fi
 
             if [ $sexIndex -ne -1 ]
             then
-                subjSex=`echo "${row[$sexIndex]}" | tr '[:upper:]' '[:lower:]'`
-                subjSex=${subjSex:0:1}
+                subjSex=`echo "$line" | awk -F $'\t' -v colToPrint="sexIndex" '{printf("%s", colToPrint)}'`
+                subjSex=`echo "$subjSex" | tr '[:upper:]' '[:lower:]'`
+                subjSex=${subjSex:0:1} #First letter only
             fi
 
             subjDemographics="$subjAge""$subjSex"
@@ -494,8 +561,6 @@ do
         fi
     fi
 done
-
-IFS=$OLD_IFS
 
 if [ $a_t -eq 1 ]
 then
