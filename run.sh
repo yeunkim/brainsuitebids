@@ -56,7 +56,7 @@ Optional settings:
     Can be used along with -i <regex>.
     [default: .*]
 
--t
+-x
     For testing purposes. Will cause program to print out name of
     each file that would have been processed, without actually 
     starting any processing jobs.
@@ -130,7 +130,7 @@ initAndProcess () {
         return 
     fi
 
-    if [ ${a_t} -eq 1 ]
+    if [ ${a_x} -eq 1 ]
     then
         echo "${dataFile}"
         echo "=========================================="
@@ -312,12 +312,12 @@ a_r_bdp=1 #Default on
 
 a_i=0
 a_s=0
-a_t=0
+a_x=0
 webserverPID=-1
 noQsub=0
 
 
-while getopts ":d:p:wr:i:s:tl" opt; do
+while getopts ":d:p:wr:i:s:xl" opt; do
     a_gotOption=1
     case $opt in
         \?)
@@ -383,8 +383,8 @@ while getopts ":d:p:wr:i:s:tl" opt; do
             a_s=1
             SESSION_REGEX=$OPTARG
             ;;
-        t)
-            a_t=1
+        x)
+            a_x=1
             ;;
         l)
             noQsub=1
@@ -628,7 +628,7 @@ do
 done < <(cat $PARTICIPANTS_FILE | sed 's/\r$//g' | sed 's/\r/\n/g')
 #Sed is for DOS support
 
-if [ $a_t -eq 1 ]
+if [ $a_x -eq 1 ]
 then
     exit 0
 fi
