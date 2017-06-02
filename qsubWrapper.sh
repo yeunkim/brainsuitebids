@@ -7,5 +7,5 @@
 #$ -N BrainSuite_QC
 
 
-python $1/py/cse.py $2 $3 $4 $5 $6 $7
+python $1/py/brainsuiteWorkflow.py $2 $3 $4 $5 $6 $7
 
