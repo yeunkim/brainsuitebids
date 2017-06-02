@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-checks.py
+checkNipypeInstallation.py
 
 Checks that nipype import works, and that brainsuite interface import works
 Handles printing out error messages
