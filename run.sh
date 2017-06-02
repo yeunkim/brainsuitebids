@@ -138,7 +138,7 @@ initAndProcess () {
         return 0
     fi
 
-    echo ${id} >> ${subjectsAndSessionsFile}
+    echo ${id} >> "${subjectsAndSessionsFile}"
 
     subjectDerivativeBase=${DERIVATIVES_DIR}/${id}
     subjectThumbnailsBase=${PUBLIC}/${THUMBNAILS_PATH}/${id}
@@ -348,7 +348,7 @@ while getopts ":d:p:wr:i:s:tl" opt; do
             a_w=1
             ;;
         r)
-            a_r_tolower=`echo $OPTARG |  tr '[:upper:]' '[:lower:]'`
+            a_r_tolower=`echo $OPTARG | tr '[:upper:]' '[:lower:]'`
 
             if [ ${a_r_tolower} == "bdp" ]
             then
@@ -514,8 +514,8 @@ isMultiSession=-1 #-1:undetermined; 1:is multisession 0:not multisession.
 subjectsAndSessionsFile=""
 
 
-#sed for DOS file support
-cat $PARTICIPANTS_FILE | sed 's/\r$//g' | sed 's/\r/\n/g' | while read line
+#Used process substitution to loop over participants tsv file
+while read line
 do
 
     if [ ${readingHeader} -eq 1 ]
@@ -557,6 +557,7 @@ do
             subjAge=`awkGetCol "$line" "$ageIndex"`
             if [ ! -z "$subjAge" ]
             then
+                #TODO handle not a number
                 subjAge="$(((${subjAge%.*} / 10) * 10))" #Floor to 10's place
             fi
         fi
@@ -601,7 +602,8 @@ do
         then
             if [ ${isMultiSession} -eq 1 ]
             then
-                ls ${ARG_DATASET}/${subjID} | while read s
+                #Process redirection
+                while read s
                 do
                     if [ -d ${ARG_DATASET}/${subjID}/${s} ] && [[ ${s} =~ ${SESSION_REGEX} ]]
                     then
@@ -611,7 +613,7 @@ do
 
                         initAndProcess ${subjAndSesID} ${subjectDataFile} ${subjectDwiBase} ${subjDemographics}
                     fi
-                done
+                done < <(ls ${ARG_DATASET}/${subjID})
             else
                 subjectDataFile=${ARG_DATASET}/${subjID}/anat/${subjID}_T1w.nii.gz
                 subjectDwiBase=${ARG_DATASET}/${subjID}/dwi/${subjID}_dwi
@@ -620,7 +622,9 @@ do
             fi
         fi
     fi
-done
+    
+done < <(cat $PARTICIPANTS_FILE | sed 's/\r$//g' | sed 's/\r/\n/g')
+#Sed is for DOS support
 
 if [ $a_t -eq 1 ]
 then
