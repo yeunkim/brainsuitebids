@@ -56,11 +56,18 @@ Optional settings:
     Can be used along with -i <regex>.
     [default: .*]
 
+-t <tmpdir>
+    change the TMP and TMPDIR shell variables to <tmpdir> when
+    submitting job to qsub. Should be used if compute nodes
+    lack tmp space, or if tmp directories are full. <tmpdir> 
+    should be a directory for which you have permissions.
+
 -x
     For testing purposes. Will cause program to print out name of
     each file that would have been processed, without actually 
     starting any processing jobs.
     Useful for debugging or for testing your regex matches.
+
 -l
     do all processing locally, without using qsub. Will automatically
     activate this option if qsub can not be found in your path.
@@ -73,9 +80,6 @@ public through a webserver).
 
 All derived data will be placed in the derivatives directory, as required
 by BIDS specifications.
-
-All intermediate data from each step may be found in:
-    {dataset}/derivatives/{subjID_sessionLabel}/CSE_outputs
 
 All thumbnails and statistical reports will be placed in public directory
 
@@ -162,10 +166,10 @@ initAndProcess () {
 
     if [ $noQsub -eq 0 ]
     then
-        qsub -o $logFile -e $logErrFile `dirname $0`/qsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${bdp} ${svreg}
+        qsub -o $logFile -e $logErrFile `dirname $0`/qsubWrapper.sh `dirname $0` "${dataFile}" "${dwiBase}" "${subjectDerivativeBase}" "${PUBLIC}" "${bdp}" "${svreg}" "${newTemp}"
     else
         echo "Registered local background process for file: ${dataFile}"
-        `dirname $0`/qsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${bdp} ${svreg} > $logFile 2> $logErrFile &
+        `dirname $0`/qsubWrapper.sh `dirname $0` "${dataFile}" "${dwiBase}" "${subjectDerivativeBase}" "${PUBLIC}" "${bdp}" "${svreg}" "${newTemp}" > $logFile 2> $logErrFile &
     fi
 
     echo "=========================================="
@@ -313,11 +317,12 @@ a_r_bdp=1 #Default on
 a_i=0
 a_s=0
 a_x=0
+newTemp="" #If remains "" when passed to qsubWrapper, then qsubWrapper will take no action
 webserverPID=-1
 noQsub=0
 
 
-while getopts ":d:p:wr:i:s:xl" opt; do
+while getopts ":d:p:wr:i:s:xt:l" opt; do
     a_gotOption=1
     case $opt in
         \?)
@@ -385,6 +390,9 @@ while getopts ":d:p:wr:i:s:xl" opt; do
             ;;
         x)
             a_x=1
+            ;;
+        t)
+            newTemp="$OPTARG"
             ;;
         l)
             noQsub=1
