@@ -162,10 +162,10 @@ initAndProcess () {
 
     if [ $noQsub -eq 0 ]
     then
-        qsub -o $logFile -e $logErrFile `dirname $0`/cseQsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${bdp} ${svreg}
+        qsub -o $logFile -e $logErrFile `dirname $0`/qsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${bdp} ${svreg}
     else
         echo "Registered local background process for file: ${dataFile}"
-        `dirname $0`/cseQsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${bdp} ${svreg} > $logFile 2> $logErrFile &
+        `dirname $0`/qsubWrapper.sh `dirname $0` ${dataFile} ${dwiBase} ${subjectDerivativeBase} ${PUBLIC} ${bdp} ${svreg} > $logFile 2> $logErrFile &
     fi
 
     echo "=========================================="
@@ -462,7 +462,7 @@ checkExecutable "python"
 checkAtlasDir
 
 #Nipype and BrainSuite Nipype interface import checks
-python `dirname $0`/py/checks.py
+python `dirname $0`/py/checkNipypeInstallation.py
 if [ $? -ne 0 ]
 then
     exit 1
