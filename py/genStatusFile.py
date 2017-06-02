@@ -125,6 +125,7 @@ def generateJSON(processingComplete):
 
         if currentState in DONE_MAPPING:
             currentJson['state'] = DONE_MAPPING[currentState]
+            currentJson['done'] = "true"
         else:
             seenNotDone = True
             currentJson['state'] = currentState

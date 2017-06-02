@@ -152,6 +152,7 @@
         var STATS_RELATIVEPATH;
         var subjects = []; //Init subjects from JSON
         var subjectStates = []; //Init from JSON. All initially -1
+        var subjectDoneBools = [];
         var errorLevelsAbsval = [];
 
         var statsCache = [];
@@ -198,6 +199,7 @@
                                 subjects.push(json.subjects[i].name);
                                 subjectStates.push(-1);
                                 errorLevelsAbsval.push(0);
+                                subjectDoneBools.push(false);
                             }
                             //Stats cache
                             for(var i = 0 ; i < Object(json.subjects).length; i++){
@@ -437,8 +439,12 @@
                 subjectState = 0;
             } else {
                 statusString += " finished " + PROCESS_NAMES[subjectState];
-                if ( (subjectState + 1) < PROCESS_NAMES.length) {
-                    statusString += ", performing " + PROCESS_NAMES[subjectState + 1];
+                if(subjectDoneBools[subjectIndex]){
+                    statusString += ". Processing for this subject is complete.";
+                }else{
+                    if ( (subjectState + 1) < PROCESS_NAMES.length) {
+                        statusString += ", performing " + PROCESS_NAMES[subjectState + 1];
+                    }
                 }
             }
             statusString += "</p>";
@@ -600,7 +606,13 @@
         function updateImages(newStates){
             var maxState = $("#slider_showstage").slider("option", "value");
             for (var subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
-                {   
+                    if(!subjectDoneBools[subjectIndex] && newStates[subjectIndex].hasOwnProperty("done")){
+                        subjectDoneBools[subjectIndex] = true;
+                        document.getElementById("progress" + subjectIndex).style.backgroundColor = "DarkMagenta";
+                    }
+
+                    //TODO use subjectDoneBools to prevent extra looping/updating images
+
                     var statePct = 0;
                     var newState = parseInt(newStates[subjectIndex].state);
                     if (newState > 0) {
@@ -627,7 +639,6 @@
                     showPct = (stateToShow / (SHORT_NAMES.length - 1)) / statePct;
                     document.getElementById("progressShown" + subjectIndex).style.left = (100 * showPct - 5) + "%";
 
-                }
             }
             
         }
