@@ -32,7 +32,7 @@ InputT1wFile
     sub-<subID>[_ses-<sesID>]_T1w.nii.gz.
 InputDWIBase
     Base directory that contains these 3 files:
-    <subID>[_ses-<sesID]_dwi.{bval|bvec|nii.gz}
+    <subID>[_ses-<sesID>]_dwi.{bval|bvec|nii.gz}
 WorkflowBaseDir
     Subject's base directory where statusFile, cse output directory, and
     nipype workflow directory will be created.
