@@ -469,8 +469,6 @@ then
 fi
 
 #Check existance of PUBLIC directory, create if needed.
-
-
 if [ $a_p -eq 0 ]
 then
     PUBLIC=$DERIVATIVES_DIR
@@ -503,7 +501,12 @@ if [ $? -ne 0 ]
 then
     exit 1
 fi
+
 #All checks done
+
+echo ""
+echo "===Looping through participants.tsv and submitting processing jobs==="
+echo ""
 
 #Parse subjects from PARTICIPANTS_FILE, make qsub calls
 readingHeader=1
@@ -512,7 +515,6 @@ ageIndex=-1 #-1: no age provided. else will be col index
 sexIndex=-1 #-1: no sex provided. else will be col index
 isMultiSession=-1 #-1:undetermined; 1:is multisession 0:not multisession.
 subjectsAndSessionsFile=""
-
 
 #Used process substitution to loop over participants tsv file
 while read line
