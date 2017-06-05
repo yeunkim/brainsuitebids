@@ -147,9 +147,9 @@ initAndProcess () {
     subjectDerivativeBase=${DERIVATIVES_DIR}/${id}
     subjectThumbnailsBase=${PUBLIC}/${THUMBNAILS_PATH}/${id}
     subjectStatsBase=${PUBLIC}/${STATS_PATH}/${id}
-    dataSinkTarget=${subjectDerivativeBase}/CSE_outputs
 
     mkdir -p ${subjectDerivativeBase}
+    cp ${dataFile} ${subjectDerivativeBase}
 
     mkdir -p ${subjectThumbnailsBase}
     volblend ${PNG_OPTIONS} -i ${dataFile} -o ${subjectThumbnailsBase}/${id}.png
@@ -158,8 +158,6 @@ initAndProcess () {
     echo -e "{\"text\": \"Viewing input MRI data, filename ${dataFile}\"}" > ${subjectStatsBase}/${id}-mri.json
     echo $demographics > ${subjectStatsBase}/${id}_demographics.txt
 
-    mkdir -p ${dataSinkTarget}
-    cp ${dataFile} ${dataSinkTarget}
     echo -1 > ${subjectDerivativeBase}${STATUS_FILENAME}
     logFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.log
     logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.err.log

@@ -34,7 +34,7 @@ InputDWIBase
     Base directory that contains these 3 files:
     <subID>[_ses-<sesID>]_dwi.{bval|bvec|nii.gz}
 WorkflowBaseDir
-    Subject's base directory where statusFile, cse output directory, and
+    Subject's base directory where statusFile, output files, and
     nipype workflow directory will be created.
     run.sh will pass subject's base directory under the derivatives directory.
 PublicDir
@@ -62,13 +62,10 @@ WORKFLOW_NAME = ""
 WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name.
 INPUT_MRI_FILE = ""
 INPUT_DWI_BASE = ""
-BDP_BASE_DIRECTORY = "DWI"
 STATUS_FILEPATH = ""
 PUBLIC = ""
 SVREG = False
 BDP = False
-
-CSE_OUTPUTS_DIR="CSE_outputs"
 
 STATUSFILE = "status.txt"
 
@@ -405,40 +402,39 @@ def runWorkflow():
     ds.inputs.base_directory = WORKFLOW_BASE_DIRECTORY
     
     #**DataSink connections**
-    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR)
-    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, CSE_OUTPUTS_DIR + '.@2')
-    brainsuite_workflow.connect(pvcObj, 'outputLabelFile', ds, CSE_OUTPUTS_DIR + '.@3')
-    brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', ds, CSE_OUTPUTS_DIR + '.@4')
-    brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', ds, CSE_OUTPUTS_DIR + '.@5')
-    brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', ds, CSE_OUTPUTS_DIR + '.@6')
-    brainsuite_workflow.connect(cerebroObj, 'outputAffineTransformFile', ds, CSE_OUTPUTS_DIR + '.@7')
-    brainsuite_workflow.connect(cerebroObj, 'outputWarpTransformFile', ds, CSE_OUTPUTS_DIR + '.@8')
-    brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', ds, CSE_OUTPUTS_DIR + '.@9')
-    brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR + '.@10')
-    brainsuite_workflow.connect(tcaObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR + '.@11')
-    brainsuite_workflow.connect(dewispObj, 'outputMaskFile', ds, CSE_OUTPUTS_DIR + '.@12')
-    brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', ds, CSE_OUTPUTS_DIR + '.@13')
-    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', ds, CSE_OUTPUTS_DIR + '.@14')
-    brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', ds, CSE_OUTPUTS_DIR + '.@15')
-    brainsuite_workflow.connect(hemisplitObj, 'outputRightHemisphere', ds, CSE_OUTPUTS_DIR + '.@16')
-    brainsuite_workflow.connect(hemisplitObj, 'outputLeftPialHemisphere', ds, CSE_OUTPUTS_DIR + '.@17')
-    brainsuite_workflow.connect(hemisplitObj, 'outputRightPialHemisphere', ds, CSE_OUTPUTS_DIR + '.@18')
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, "@")
+    brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, '@2')
+    brainsuite_workflow.connect(pvcObj, 'outputLabelFile', ds, '@3')
+    brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', ds, '@4')
+    brainsuite_workflow.connect(cerebroObj, 'outputCerebrumMaskFile', ds, '@5')
+    brainsuite_workflow.connect(cerebroObj, 'outputLabelVolumeFile', ds, '@6')
+    brainsuite_workflow.connect(cerebroObj, 'outputAffineTransformFile', ds, '@7')
+    brainsuite_workflow.connect(cerebroObj, 'outputWarpTransformFile', ds, '@8')
+    brainsuite_workflow.connect(cortexObj, 'outputCerebrumMask', ds, '@9')
+    brainsuite_workflow.connect(scrubmaskObj, 'outputMaskFile', ds, '@10')
+    brainsuite_workflow.connect(tcaObj, 'outputMaskFile', ds, '@11')
+    brainsuite_workflow.connect(dewispObj, 'outputMaskFile', ds, '@12')
+    brainsuite_workflow.connect(dfsObj, 'outputSurfaceFile', ds, '@13')
+    brainsuite_workflow.connect(pialmeshObj, 'outputSurfaceFile', ds, '@14')
+    brainsuite_workflow.connect(hemisplitObj, 'outputLeftHemisphere', ds, '@15')
+    brainsuite_workflow.connect(hemisplitObj, 'outputRightHemisphere', ds, '@16')
+    brainsuite_workflow.connect(hemisplitObj, 'outputLeftPialHemisphere', ds, '@17')
+    brainsuite_workflow.connect(hemisplitObj, 'outputRightPialHemisphere', ds, '@18')
 
     if BDP:
         bdpObj = pe.Node(interface=bs.BDP(), name='BDP')
-        bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + SUBJECT_ID + '_T1w'
+        bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w'
 
         #bdp inputs that will be created. We delay execution of BDP until all CSE and datasink are done
         bdpObj.inputs.bfcFile = bdpInputBase + '.bfc.nii.gz'
         bdpObj.inputs.inputDiffusionData = INPUT_DWI_BASE + '.nii.gz'
         bdpObj.inputs.BVecBValPair = [ INPUT_DWI_BASE + '.bvec' , INPUT_DWI_BASE + '.bval' ]
-        bdpObj.inputs.outputSubdir = BDP_BASE_DIRECTORY
 
         brainsuite_workflow.connect(ds, 'out_file', bdpObj, 'dataSinkDelay')
 
     if SVREG:
         svregObj = pe.Node(interface=bs.SVReg(), name='SVREG')
-        svregInputBase =  WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + SUBJECT_ID + '_T1w'
+        svregInputBase =  WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w'
 
         #svreg inputs that will be created. We delay execution of SVReg until all CSE and datasink are done
         svregObj.inputs.subjectFilePrefix = svregInputBase
@@ -450,7 +446,7 @@ def runWorkflow():
 
     if BDP:
         #bdp command: volblend -i <t1w.nii.gz> -r dwi/<id>_t1w.dwi.ras.correct.fa.color.t1_coord.nii.gz -o <outfile> --view 3 --slice 60
-        updateStatusFile(WORKFLOW_BASE_DIRECTORY + os.sep + CSE_OUTPUTS_DIR + os.sep + BDP_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w.dwi.RAS.correct.FA.color.T1_coord.nii.gz', INPUT_MRI_FILE, None, STATUS_FILEPATH, 12, PUBLIC)
+        updateStatusFile(WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w.dwi.RAS.correct.FA.color.T1_coord.nii.gz', INPUT_MRI_FILE, None, STATUS_FILEPATH, 12, PUBLIC)
     
     if SVREG:
         #SVREG COMMAND: dfsrender -o ~/public_html/test.png -s 2523412.right.pial.cortex.svreg.dfs --zoom 0.5 --xrot -90 --zrot -90 -x 512 -y 512
