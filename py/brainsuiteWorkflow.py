@@ -430,6 +430,10 @@ def runWorkflow():
         bdpObj.inputs.inputDiffusionData = INPUT_DWI_BASE + '.nii.gz'
         bdpObj.inputs.BVecBValPair = [ INPUT_DWI_BASE + '.bvec' , INPUT_DWI_BASE + '.bval' ]
 
+        bdpObj.inputs.estimateTensors = True
+        bdpObj.inputs.estimateODF_FRACT = True
+        bdpObj.inputs.estimateODF_FRT = True
+
         brainsuite_workflow.connect(ds, 'out_file', bdpObj, 'dataSinkDelay')
 
     if SVREG:
