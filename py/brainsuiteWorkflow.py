@@ -155,10 +155,10 @@ def updateStatusFile(connectFile, secondaryFile, statsFiles, statusPath, status,
     stepName = ((STATS_SUFFIX[status]).split("-")[1]).split(".json")[0]
     
     if STATS_EXECUTABLES[status] is not None:
-        statsCommand = ("%s -i %s --json >> %s") % (STATS_EXECUTABLES[status], statsFiles, outputStatsFile)
+        statsCommand = ("%s -i %s --json > %s") % (STATS_EXECUTABLES[status], statsFiles, outputStatsFile)
     else:
         tempText = ('{"text": "Statistics currently unavailable for stage %s. Viewing thumbnail generated from %s."}') % (stepName, connectFile)
-        statsCommand = ("echo '%s' >> %s") % (tempText, outputStatsFile)
+        statsCommand = ("echo '%s' > %s") % (tempText, outputStatsFile)
 
     statsReturnValue = os.system(statsCommand)
 
