@@ -401,7 +401,7 @@ def runWorkflow():
     
     #**DataSink connections**
     brainsuite_workflow.connect(bseObj, 'outputMRIVolume', ds, '@')
-    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, '.@1')
+    brainsuite_workflow.connect(bseObj, 'outputMaskFile', ds, '@1')
     brainsuite_workflow.connect(bfcObj, 'outputMRIVolume', ds, '@2')
     brainsuite_workflow.connect(pvcObj, 'outputLabelFile', ds, '@3')
     brainsuite_workflow.connect(pvcObj, 'outputTissueFractionFile', ds, '@4')
