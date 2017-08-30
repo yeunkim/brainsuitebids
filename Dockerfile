@@ -45,9 +45,6 @@ RUN wget -q users.bmap.ucla.edu/~yeunkim/private/BrainSuite17a.linux.tgz && \
     cd / && \
     rm BrainSuite17a.linux.tgz
 
-COPY bin/dfsrender15a_x86_64-pc-linux-gnu /BrainSuite17a/bin/dfsrender
-COPY bin/volblend14c_x86_64-pc-linux-gnu /BrainSuite17a/bin/volblend
-
 RUN chmod -R ugo+r /BrainSuite17a
 
 
