@@ -8,11 +8,11 @@ RUN apt-get -y update --fix-missing && apt-get install -y \
 
 # Anaconda
 RUN mkdir conda_install && cd conda_install && \
-    wget -q https://repo.continuum.io/archive/Anaconda3-4.3.1-Linux-x86_64.sh && \
-    bash Anaconda3-4.3.1-Linux-x86_64.sh -b -p /opt/conda && \
+    wget -q https://repo.continuum.io/archive/Anaconda2-4.4.0-Linux-x86_64.sh && \
+    bash Anaconda2-4.4.0-Linux-x86_64.sh -b -p /opt/conda && \
     cd / && \
     rm -rf conda_install && \
-    echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh 
+    echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh
 ENV PATH /opt/conda/bin:$PATH
 
 # MATLAB MCR
@@ -24,39 +24,48 @@ RUN mkdir mcr_install && \
     cd / && \
     rm -rf mcr_install
 
+RUN apt-get update && apt-get install -y --no-install-recommends python-six python-nibabel python-setuptools && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN pip install pybids==0.0.1
+ENV PYTHONPATH=""
+
 # Nipype
 RUN git clone https://github.com/nipy/nipype && \
     cd nipype && \
     pip install -r requirements.txt && \
     python setup.py develop
 
+
+##TODO: fix to BrainSuite17a
 # BrainSuite
-RUN wget -q users.bmap.ucla.edu/~jwong/private/BrainSuite16a1.linux.tgz --user jwong --password notPublic && \
-    tar -xf BrainSuite16a1.linux.tgz && \
-    cd BrainSuite16a1/bin && \
-    wget -q users.bmap.ucla.edu/~jwong/private/volblend --user jwong --password notPublic && \
-    wget -q users.bmap.ucla.edu/~jwong/private/dfsrender --user jwong --password notPublic && \
-    chmod +x /BrainSuite16a1/bin/volblend && \
-    chmod +x /BrainSuite16a1/bin/dfsrender && \
-    chmod -R ugo+r /BrainSuite16a1 && \
+RUN wget -q users.bmap.ucla.edu/~yeunkim/private/BrainSuite17a.linux.tgz && \
+    tar -xf BrainSuite17a.linux.tgz && \
+    cd BrainSuite17a/bin && \
+    chmod -R ugo+r /BrainSuite17a && \
     cd / && \
-    rm BrainSuite16a1.linux.tgz
+    rm BrainSuite17a.linux.tgz
 
-# Stats Executables
-RUN cd /BrainSuite16a1/bin && \
-    wget -q users.bmap.ucla.edu/~jwong/private/tissueFrac --user jwong --password notPublic && \
-    wget -q users.bmap.ucla.edu/~jwong/private/voxelCount --user jwong --password notPublic  && \
-    chmod +x /BrainSuite16a1/bin/tissueFrac && \
-    chmod +x /BrainSuite16a1/bin/voxelCount
+COPY bin/dfsrender15a_x86_64-pc-linux-gnu /BrainSuite17a/bin/dfsrender
+COPY bin/volblend14c_x86_64-pc-linux-gnu /BrainSuite17a/bin/volblend
 
+RUN chmod -R ugo+r /BrainSuite17a
 
-ENV PATH=/BrainSuite16a1/bin/:/BrainSuite16a1/svreg/bin/:/BrainSuite16a1/bdp/:${PATH}
+# Stats Executables --> disable?
+#RUN cd /BrainSuite16a1/bin && \
+#    wget -q users.bmap.ucla.edu/~jwong/private/tissueFrac --user jwong --password notPublic && \
+#    wget -q users.bmap.ucla.edu/~jwong/private/voxelCount --user jwong --password notPublic  && \
+#    chmod +x /BrainSuite16a1/bin/tissueFrac && \
+#    chmod +x /BrainSuite16a1/bin/voxelCount
+
+ENV PATH=/BrainSuite17a/bin/:/BrainSuite17a/svreg/bin/:/BrainSuite17a/bdp/:${PATH}
 
 ADD . /qc-system
 
-# Remove ^M at end of line from DOS systems.
-RUN find ./qc-system -type f | xargs -I {} sed -i -e 's/\r$//' {}
+## Remove ^M at end of line from DOS systems.
+#RUN find ./qc-system -type f | xargs -I {} sed -i -e 's/\r$//' {}
+
+RUN chmod +x ./qc-system/run.py
 
 # TODO remove options used in testing
-ENTRYPOINT ["./qc-system/run.sh"]
-CMD ["-d", "/data", "-w"]
+ENTRYPOINT ["./qc-system/run.py"]
+

@@ -6,7 +6,7 @@ BrainSuite QC System
 
 Usage: `basename $0` -d <directory_path> [settings]
 
-Required settings:
+Required positional arguments:
 -d <directory_path>         
     path to a BIDS formatted dataset. participants.tsv is required for
     this program to work. Program will determine what subjects to process
@@ -30,7 +30,7 @@ Optional settings:
     Controls what processing will be done in addition to CSE.
     If BDP is enabled, will first check for dwi data; if dwi data is
     not found, BDP will be disabled.
-    <processing_steps> must be one of: {bdp, svreg, none, all}
+    <processing_steps> must be one of: {bdp, svreg, none, all} ##TODO: change none to cse and add more stages
     [default: all]
 
 -i <regex>
@@ -56,7 +56,7 @@ Optional settings:
     Can be used along with -i <regex>.
     [default: .*]
 
--t <tmpdir>
+-t <tmpdir> (remove?)
     change the TMP and TMPDIR shell variables to <tmpdir> when
     submitting job to qsub. Should be used if compute nodes
     lack tmp space, or if tmp directories are full. <tmpdir> 
@@ -162,6 +162,7 @@ initAndProcess () {
     logFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.log
     logErrFile=${DERIVATIVES_DIR}${LOG_PATH}/${id}.err.log
 
+    ## TODO: turn off qsub functions?
     if [ $noQsub -eq 0 ]
     then
         qsub -o $logFile -e $logErrFile `dirname $0`/qsubWrapper.sh `dirname $0` "${dataFile}" "${dwiBase}" "${subjectDerivativeBase}" "${PUBLIC}" "${bdp}" "${svreg}" "${newTemp}"

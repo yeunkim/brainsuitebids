@@ -217,6 +217,7 @@ def init():
     global PUBLIC
     global SVREG
     global BDP
+    global ODIR
     BRAINSUITE_ATLAS_DIRECTORY = find_executable('bse')[:-3] + '../atlas/'
 
     #TODO: Add auto parsing of a brainsuite settings file, if file exists (this is a possible nice feature)
@@ -227,12 +228,13 @@ def init():
     PUBLIC = os.path.abspath(args[3])
     BDP = args[4].lower() in ("yes", "true", "y", "1")
     SVREG = args[5].lower() in ("yes", "true", "y", "1")
+    ODIR = args[6].lower() in ("yes", "true", "y", "1")
 
     SUBJECT_ID = parseInputFilename(INPUT_MRI_FILE)
     WORKFLOW_NAME = SUBJECT_ID + WORKFLOW_SUFFIX
 
 
-    STATUS_FILEPATH = WORKFLOW_BASE_DIRECTORY + os.sep + STATUSFILE
+    STATUS_FILEPATH = ODIR + os.sep + STATUSFILE
 
 def runWorkflow():
     """
@@ -422,6 +424,7 @@ def runWorkflow():
 
     if BDP:
         bdpObj = pe.Node(interface=bs.BDP(), name='BDP')
+        # bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w'
         bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w'
 
         #bdp inputs that will be created. We delay execution of BDP until all CSE and datasink are done
