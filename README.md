@@ -1,1 +1,1 @@
-# BrainSuite QC System
+# BrainSuite BIDS-App Light-weight

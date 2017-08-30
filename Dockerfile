@@ -50,12 +50,15 @@ COPY bin/volblend14c_x86_64-pc-linux-gnu /BrainSuite17a/bin/volblend
 
 RUN chmod -R ugo+r /BrainSuite17a
 
-# Stats Executables --> disable?
-#RUN cd /BrainSuite16a1/bin && \
-#    wget -q users.bmap.ucla.edu/~jwong/private/tissueFrac --user jwong --password notPublic && \
-#    wget -q users.bmap.ucla.edu/~jwong/private/voxelCount --user jwong --password notPublic  && \
-#    chmod +x /BrainSuite16a1/bin/tissueFrac && \
-#    chmod +x /BrainSuite16a1/bin/voxelCount
+
+## Install the validator
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -sL https://deb.nodesource.com/setup_6.x | bash - && \
+    apt-get remove -y curl && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN npm install -g bids-validator@0.19.2
 
 ENV PATH=/BrainSuite17a/bin/:/BrainSuite17a/svreg/bin/:/BrainSuite17a/bdp/:${PATH}
 

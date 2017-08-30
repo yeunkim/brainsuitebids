@@ -105,9 +105,8 @@ if args.analysis_level == "participant":
 
         # TODO: support multiple sessions : ? sessions = layout.get(target='ses' )
         for i, t1 in enumerate(t1ws):
-            dwi = dwis[0].split('.')[0]
-
-            runWorkflow('sub-%s'%subject_label, args.output_dir, 'BDP', 'SVREG')
+        #     dwi = dwis[0].split('.')[0]
+            runWorkflow('sub-%s'%subject_label, t1, args.output_dir, BDP=dwis[i].split('.')[0], SVREG=True)
 
 
 

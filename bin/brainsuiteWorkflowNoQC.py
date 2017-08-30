@@ -19,19 +19,19 @@ import sys
 ATLAS_MRI_SUFFIX = 'brainsuite.icbm452.lpi.v08a.img'
 ATLAS_LABEL_SUFFIX = 'brainsuite.icbm452.v15a.label.img'
 
-BRAINSUITE_ATLAS_DIRECTORY = ""
-WORKFLOW_BASE_DIRECTORY = ""
-SUBJECT_ID = ""
-WORKFLOW_NAME = ""
-WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name.
-INPUT_MRI_FILE = ""
-INPUT_DWI_BASE = ""
-STATUS_FILEPATH = ""
-PUBLIC = ""
-SVREG = False
-BDP = False
+BRAINSUITE_ATLAS_DIRECTORY = "/BrainSuite17a/atlas/"
+# WORKFLOW_BASE_DIRECTORY = ""
+# SUBJECT_ID = ""
+# WORKFLOW_NAME = ""
+# WORKFLOW_SUFFIX = "_nipype_workflow" #Will be appended to subject ID, to form nipype workflow name.
+# INPUT_MRI_FILE = ""
+# INPUT_DWI_BASE = ""
+# STATUS_FILEPATH = ""
+# PUBLIC = ""
+# SVREG = False
+# BDP = False
 
-def runWorkflow(SUBJECT_ID, WORKFLOW_BASE_DIRECTORY, **keyword_parameters):
+def runWorkflow(SUBJECT_ID, INPUT_MRI_FILE, WORKFLOW_BASE_DIRECTORY, **keyword_parameters):
     WORKFLOW_NAME = SUBJECT_ID + "_cse"
 
     brainsuite_workflow = pe.Workflow(name=WORKFLOW_NAME)
@@ -112,6 +112,7 @@ def runWorkflow(SUBJECT_ID, WORKFLOW_BASE_DIRECTORY, **keyword_parameters):
     brainsuite_workflow.connect(hemisplitObj, 'outputRightPialHemisphere', ds, '@18')
 
     if 'BDP' in keyword_parameters:
+        INPUT_DWI_BASE = keyword_parameters['BDP']
         bdpObj = pe.Node(interface=bs.BDP(), name='BDP')
         # bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w'
         bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w'
@@ -133,19 +134,13 @@ def runWorkflow(SUBJECT_ID, WORKFLOW_BASE_DIRECTORY, **keyword_parameters):
 
         # svreg inputs that will be created. We delay execution of SVReg until all CSE and datasink are done
         svregObj.inputs.subjectFilePrefix = svregInputBase
+        # svregObj.inputs.useSingleThreading = True
 
         brainsuite_workflow.connect(ds, 'out_file', svregObj, 'dataSinkDelay')
 
-    brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
+    brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 4})
 
 
-    # Processing completed successfully. Change 11 to 110, 12 to 120, 13 to 130 to indicate completion
-    f = open(STATUS_FILEPATH, "r")
-    finalStatus = int(f.read()) * 10
-    f.close()
-    f = open(STATUS_FILEPATH, "w")
-    f.write("%d" % finalStatus)
-    f.close()
 
     # Print message when all processing is complete.
     print('Processing for subject %s has completed. Nipype workflow is located at: %s' % (
