@@ -101,12 +101,25 @@ if args.analysis_level == "participant":
         dwis = [f.filename for f in layout.get(subject=subject_label,
                                                type='dwi',
                                                extensions=["nii.gz", "nii"])]
+        bvals = [f.filename for f in layout.get(subject=subject_label,
+                                               type='dwi',
+                                               extensions=["bval"])]
+        bvecs = [f.filename for f in layout.get(subject=subject_label,
+                                               type='dwi',
+                                               extensions=["bvec"])]
         assert (len(t1ws) > 0), "No T1w files found for subject %s!" % subject_label
 
         # TODO: support multiple sessions : ? sessions = layout.get(target='ses' )
-        for i, t1 in enumerate(t1ws):
-        #     dwi = dwis[0].split('.')[0]
-            runWorkflow('sub-%s'%subject_label, t1, args.output_dir, BDP=dwis[i].split('.')[0], SVREG=True)
 
+        if (len(dwis) > 0):
+            assert (len(dwis) == len(bvals)), "The number of DWI image data and bval files do not match."
+            assert (len(dwis) == len(bvecs)), "The number of DWI image data and bvec files do not match."
 
+            for i, t1 in enumerate(t1ws):
+            #     dwi = dwis[0].split('.')[0]
+                runWorkflow('sub-%s'%subject_label, t1, args.output_dir, BDP=dwis[i].split('.')[0], SVREG=True)
+
+        else:
+            for t1 in t1ws:
+                runWorkflow('sub-%s'%subject_label, t1, args.output_dir, SVREG=True)
 
