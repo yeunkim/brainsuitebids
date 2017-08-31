@@ -138,7 +138,7 @@ def runWorkflow(SUBJECT_ID, INPUT_MRI_FILE, WORKFLOW_BASE_DIRECTORY, **keyword_p
 
         brainsuite_workflow.connect(ds, 'out_file', svregObj, 'dataSinkDelay')
 
-    brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 4})
+    brainsuite_workflow.run(plugin='MultiProc', plugin_args={'n_procs': 2})
 
 
 
