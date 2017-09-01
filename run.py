@@ -11,14 +11,7 @@ from subprocess import Popen, PIPE, check_output
 from shutil import rmtree
 import subprocess
 from bids.grabbids import BIDSLayout
-from functools import partial
-from collections import OrderedDict
-import time
-from multiprocessing import Process, Pool
-import logging
-import datetime
-import traceback
-import sys
+from shutil import copyfile
 from bin.brainsuiteWorkflowNoQC import runWorkflow
 
 def run(command, env={}, cwd=None):
@@ -95,31 +88,73 @@ else:
 
 if args.analysis_level == "participant":
     for subject_label in subjects_to_analyze:
-        t1ws = [f.filename for f in layout.get(subject=subject_label,
-                                               type='T1w',
-                                               extensions=["nii.gz", "nii"])]
-        dwis = [f.filename for f in layout.get(subject=subject_label,
-                                               type='dwi',
-                                               extensions=["nii.gz", "nii"])]
-        bvals = [f.filename for f in layout.get(subject=subject_label,
-                                               type='dwi',
-                                               extensions=["bval"])]
-        bvecs = [f.filename for f in layout.get(subject=subject_label,
-                                               type='dwi',
-                                               extensions=["bvec"])]
-        assert (len(t1ws) > 0), "No T1w files found for subject %s!" % subject_label
 
-        # TODO: support multiple sessions : ? sessions = layout.get(target='ses' )
+            sessions = layout.get(target='session', return_type='id',
+                                  subject=subject_label,
+                                  type='T1w',
+                                  extensions=["nii.gz","nii"]
+                                  )
 
-        if (len(dwis) > 0):
-            assert (len(dwis) == len(bvals)), "The number of DWI image data and bval files do not match."
-            assert (len(dwis) == len(bvecs)), "The number of DWI image data and bvec files do not match."
+            if len(sessions) > 0:
+                for ses in range(0, len(sessions)):
+                    # layout._get_nearest_helper(dwi, 'bval', type='dwi')
+                    t1ws = [f.filename for f in layout.get(subject=subject_label,
+                                                           type='T1w', session=sessions[ses],
+                                                           extensions=["nii.gz", "nii"])]
+                    assert (len(t1ws) > 0), "No T1w files found for subject %s!" % subject_label
 
-            for i, t1 in enumerate(t1ws):
-            #     dwi = dwis[0].split('.')[0]
-                runWorkflow('sub-%s'%subject_label, t1, args.output_dir, BDP=dwis[i].split('.')[0], SVREG=True)
+                    dwis = [f.filename for f in layout.get(subject=subject_label,
+                                                           type='dwi', session=sessions[ses],
+                                                           extensions=["nii.gz", "nii"])]
+                    if (len(dwis) > 0):
+                        for i, t1 in enumerate(t1ws):
+                            abspath = os.path.abspath(t1)
+                            bvals = [f for f in layout._get_nearest_helper(abspath,
+                                                                           'bval',
+                                                                           type='dwi')]
+                            bvecs = [f for f in layout._get_nearest_helper(abspath,
+                                                                           'bvec',
+                                                                           type='dwi')]
+                            dwipath = os.path.abspath(os.path.dirname(dwis[i]))
+                            copyfile(bvals[0], os.path.join(dwipath, 'tmp.bval'))
+                            copyfile(bvecs[0], os.path.join(dwipath,'tmp.bvec'))
 
-        else:
-            for t1 in t1ws:
-                runWorkflow('sub-%s'%subject_label, t1, args.output_dir, SVREG=True)
+                            subjectID = 'sub-{0}_ses-{1}'.format(subject_label, sessions[ses])
+                            runWorkflow(subjectID, t1, args.output_dir, args.bids_dir, BDP=dwis[i].split('.')[0], SVREG=True)
+                            os.remove(os.path.join(dwipath, 'tmp.bval'))
+                            os.remove(os.path.join(dwipath, 'tmp.bvec'))
+
+                    else:
+                        for t1 in t1ws:
+                            runWorkflow('sub-%s'%subject_label, t1, args.output_dir, args.bids_dir, SVREG=True)
+            else:
+
+                t1ws = [f.filename for f in layout.get(subject=subject_label,
+                                                       type='T1w',
+                                                       extensions=["nii.gz", "nii"])]
+                assert (len(t1ws) > 0), "No T1w files found for subject %s!" % subject_label
+
+                dwis = [f.filename for f in layout.get(subject=subject_label,
+                                                       type='dwi',
+                                                       extensions=["nii.gz", "nii"])]
+                if (len(dwis) > 0):
+                    for i, t1 in enumerate(t1ws):
+                        abspath = os.path.abspath(t1)
+                        bvals = [f for f in layout._get_nearest_helper(abspath,
+                                                                       'bval',
+                                                                       type='dwi')]
+                        bvecs = [f for f in layout._get_nearest_helper(abspath,
+                                                                       'bvec',
+                                                                       type='dwi')]
+                        dwipath = os.path.abspath(os.path.dirname(dwis[i]))
+                        copyfile(bvals[0], os.path.join(dwipath, 'tmp.bval'))
+                        copyfile(bvecs[0], os.path.join(dwipath, 'tmp.bvec'))
+                        runWorkflow('sub-%s' % subject_label, t1, args.output_dir, args.bids_dir,
+                                    BDP=dwis[i].split('.')[0], SVREG=True)
+                        os.remove(os.path.join(dwipath, 'tmp.bval'))
+                        os.remove(os.path.join(dwipath, 'tmp.bvec'))
+
+                else:
+                    for t1 in t1ws:
+                        runWorkflow('sub-%s' % subject_label, t1, args.output_dir, args.bids_dir, SVREG=True)
 

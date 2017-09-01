@@ -26,7 +26,7 @@ RUN mkdir mcr_install && \
 
 RUN apt-get update && apt-get install -y --no-install-recommends python-six python-nibabel python-setuptools && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN pip install pybids==0.0.1
+RUN pip install git+https://github.com/INCF/pybids.git
 ENV PYTHONPATH=""
 
 # Nipype

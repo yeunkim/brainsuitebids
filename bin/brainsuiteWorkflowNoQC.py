@@ -10,6 +10,7 @@ import nipype.pipeline.engine as pe
 import nipype.interfaces.brainsuite as bs
 import nipype.interfaces.io as io
 import os
+from bids.grabbids import BIDSLayout
 
 import sys
 # from optparse import OptionParser
@@ -31,7 +32,9 @@ BRAINSUITE_ATLAS_DIRECTORY = "/BrainSuite17a/atlas/"
 # SVREG = False
 # BDP = False
 
-def runWorkflow(SUBJECT_ID, INPUT_MRI_FILE, WORKFLOW_BASE_DIRECTORY, **keyword_parameters):
+def runWorkflow(SUBJECT_ID, INPUT_MRI_FILE, WORKFLOW_BASE_DIRECTORY, BIDS_DIRECTORY, **keyword_parameters):
+    layout = BIDSLayout(BIDS_DIRECTORY)
+
     WORKFLOW_NAME = SUBJECT_ID + "_cse"
 
     brainsuite_workflow = pe.Workflow(name=WORKFLOW_NAME)
@@ -114,13 +117,13 @@ def runWorkflow(SUBJECT_ID, INPUT_MRI_FILE, WORKFLOW_BASE_DIRECTORY, **keyword_p
     if 'BDP' in keyword_parameters:
         INPUT_DWI_BASE = keyword_parameters['BDP']
         bdpObj = pe.Node(interface=bs.BDP(), name='BDP')
-        # bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w'
         bdpInputBase = WORKFLOW_BASE_DIRECTORY + os.sep + SUBJECT_ID + '_T1w'
 
         # bdp inputs that will be created. We delay execution of BDP until all CSE and datasink are done
         bdpObj.inputs.bfcFile = bdpInputBase + '.bfc.nii.gz'
         bdpObj.inputs.inputDiffusionData = INPUT_DWI_BASE + '.nii.gz'
-        bdpObj.inputs.BVecBValPair = [INPUT_DWI_BASE + '.bvec', INPUT_DWI_BASE + '.bval']
+        dwiabspath = os.path.abspath(os.path.dirname(INPUT_DWI_BASE + '.nii.gz'))
+        bdpObj.inputs.BVecBValPair = [dwiabspath+'/tmp.bval', dwiabspath+'/tmp.bvec']
 
         bdpObj.inputs.estimateTensors = True
         bdpObj.inputs.estimateODF_FRACT = True
